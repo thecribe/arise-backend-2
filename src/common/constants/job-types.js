@@ -1,0 +1,3 @@
+export const JOB_TYPES = {
+  EMAIL_VERIFICATION: "EMAIL_VERIFICATION",
+};
