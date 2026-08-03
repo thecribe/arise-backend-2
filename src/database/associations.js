@@ -1,24 +1,24 @@
-import { User } from "./models/User.js";
-import { Role } from "./models/Role.js";
-import { UserRole } from "./models/UserRole.js";
-import { Token } from "./models/Token.js";
-import { UserSession } from "./models/UserSession.js";
+import {
+  JobType,
+  Permission,
+  Role,
+  RolePermission,
+  Token,
+  User,
+  UserSession,
+} from "./models/index.js";
 
 const registerAssociations = () => {
   /**
    * User <-> Role
    */
-  User.belongsToMany(Role, {
-    through: UserRole,
-    foreignKey: "user_id",
-    otherKey: "role_id",
-    as: "roles",
+  User.belongsTo(Role, {
+    foreignKey: "role_id",
+    as: "role",
   });
 
-  Role.belongsToMany(User, {
-    through: UserRole,
+  Role.hasMany(User, {
     foreignKey: "role_id",
-    otherKey: "user_id",
     as: "users",
   });
 
@@ -43,6 +43,28 @@ const registerAssociations = () => {
   UserSession.belongsTo(User, {
     foreignKey: "user_id",
     as: "user",
+  });
+  Role.belongsToMany(Permission, {
+    through: RolePermission,
+    foreignKey: "role_id",
+    otherKey: "permission_id",
+    as: "permissions",
+  });
+
+  Permission.belongsToMany(Role, {
+    through: RolePermission,
+    foreignKey: "permission_id",
+    otherKey: "role_id",
+    as: "roles",
+  });
+  User.belongsTo(JobType, {
+    foreignKey: "job_type_id",
+    as: "jobType",
+  });
+
+  JobType.hasMany(User, {
+    foreignKey: "job_type_id",
+    as: "users",
   });
 };
 

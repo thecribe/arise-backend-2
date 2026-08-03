@@ -43,7 +43,18 @@ export const up = async ({ context: queryInterface }) => {
       type: DataTypes.STRING(30),
       allowNull: false,
     },
+    role_id: {
+      type: DataTypes.UUID,
+      allowNull: false,
 
+      references: {
+        model: "roles",
+        key: "id",
+      },
+
+      onDelete: "RESTRICT",
+      onUpdate: "CASCADE",
+    },
     is_email_verified: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
@@ -65,7 +76,10 @@ export const up = async ({ context: queryInterface }) => {
       allowNull: false,
       defaultValue: true,
     },
-
+    deleted_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
     created_at: {
       type: DataTypes.DATE,
       allowNull: false,

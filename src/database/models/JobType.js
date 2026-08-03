@@ -3,9 +3,9 @@ import { v4 as uuid } from "uuid";
 
 import { sequelize } from "../../config/database.js";
 
-class UserRole extends Model {}
+class JobType extends Model {}
 
-UserRole.init(
+JobType.init(
   {
     id: {
       type: DataTypes.UUID,
@@ -13,28 +13,35 @@ UserRole.init(
       defaultValue: () => uuid(),
     },
 
-    user_id: {
-      type: DataTypes.UUID,
+    name: {
+      type: DataTypes.STRING(100),
       allowNull: false,
+      unique: true,
     },
 
-    role_id: {
-      type: DataTypes.UUID,
+    is_default: {
+      type: DataTypes.BOOLEAN,
       allowNull: false,
+      defaultValue: false,
     },
-
-    assigned_at: DataTypes.DATE,
-
-    assigned_by: DataTypes.UUID,
   },
   {
     sequelize,
-    modelName: "UserRole",
-    tableName: "user_roles",
-    underscored: true,
-    timestamps: true,
+
+    modelName: "JobType",
+
+    tableName: "job_types",
+
     freezeTableName: true,
+
+    underscored: true,
+
+    timestamps: true,
+
+    paranoid: true,
+
+    deletedAt: "deleted_at",
   },
 );
 
-export { UserRole };
+export { JobType };

@@ -1,8 +1,37 @@
 import { Op } from "sequelize";
-import { User, Role, UserRole, Token } from "../../database/models/index.js";
+import {
+  User,
+  Role,
+  Token,
+  Permission,
+  UserSession,
+  JobType,
+} from "../../database/models/index.js";
+
+const roleInclude = {
+  model: Role,
+  as: "role",
+
+  include: [
+    {
+      model: Permission,
+      as: "permissions",
+
+      through: {
+        attributes: [],
+      },
+    },
+  ],
+};
+const jobTypeInclude = {
+  model: JobType,
+  as: "jobType",
+};
 
 const findUserById = async (id) => {
-  return User.findByPk(id);
+  return User.findByPk(id, {
+    include: [roleInclude, jobTypeInclude],
+  });
 };
 
 const createUser = async (payload, transaction) => {
@@ -13,10 +42,6 @@ const findRoleByName = async (name) => {
   return Role.findOne({
     where: { name },
   });
-};
-
-const assignRole = async (payload, transaction) => {
-  return UserRole.create(payload, { transaction });
 };
 
 const createToken = async (payload, transaction) => {
@@ -81,15 +106,8 @@ const findUserByEmail = async (email) => {
     where: {
       email,
     },
-    include: [
-      {
-        model: Role,
-        as: "roles",
-        through: {
-          attributes: [],
-        },
-      },
-    ],
+
+    include: [roleInclude, jobTypeInclude],
   });
 };
 
@@ -111,13 +129,84 @@ const findSession = async (id) => {
     },
   });
 };
+const updateLastLogin = async (user, transaction) => {
+  return user.update(
+    {
+      last_login_at: new Date(),
+    },
+    {
+      transaction,
+    },
+  );
+};
+
+const findAuthenticatedSession = async (sessionId) => {
+  return UserSession.findOne({
+    where: {
+      id: sessionId,
+      revoked_at: null,
+    },
+
+    include: [
+      {
+        model: User,
+        as: "user",
+
+        include: [roleInclude, jobTypeInclude],
+      },
+    ],
+  });
+};
+
+/**
+ * Revokes a single user session.
+ */
+const revokeSession = async (session, transaction) => {
+  return session.update(
+    {
+      revoked_at: new Date(),
+    },
+    {
+      transaction,
+    },
+  );
+};
+
+/**
+ * Revokes every active session belonging to a user.
+ */
+const revokeAllSessions = async (userId, transaction) => {
+  return UserSession.update(
+    {
+      revoked_at: new Date(),
+    },
+    {
+      where: {
+        user_id: userId,
+        revoked_at: null,
+      },
+      transaction,
+    },
+  );
+};
+/**
+ * Retrieves the default job type.
+ */
+const findDefaultJobType = async () => {
+  return JobType.findOne({
+    where: {
+      is_default: true,
+    },
+  });
+};
+
 //Export all respository
 export const authRepository = {
   findUserByEmail,
   findUserById,
   createUser,
   findRoleByName,
-  assignRole,
+
   createToken,
   findToken,
   markTokenAsUsed,
@@ -126,4 +215,9 @@ export const authRepository = {
   createSession,
   updateSession,
   findSession,
+  updateLastLogin,
+  findAuthenticatedSession,
+  revokeSession,
+  revokeAllSessions,
+  findDefaultJobType,
 };

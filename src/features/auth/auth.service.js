@@ -8,6 +8,10 @@ import { TOKEN_TYPES } from "../../common/constants/token-types.js";
 import { tokenService } from "../../common/services/token.service.js";
 import { jobService } from "../../infrastructure/jobs/job.service.js";
 import { JOB_TYPES } from "../../common/constants/job-types.js";
+import { passwordService } from "../../common/services/password.service.js";
+import { jwtService } from "../../common/services/jwt.service.js";
+import { userMapper } from "./mappers/user.mapper.js";
+import { SESSION_DURATION } from "../../common/constants/auth.js";
 
 const register = async (payload) => {
   const existingUser = await authRepository.findUserByEmail(payload.email);
@@ -15,10 +19,21 @@ const register = async (payload) => {
   if (existingUser) {
     throw new Error("Email address already exists.");
   }
-
+  console.log(payload);
   const transaction = await sequelize.transaction();
 
   try {
+    const applicantRole = await authRepository.findRoleByName("APPLICANT");
+    const defaultJobType = await authRepository.findDefaultJobType();
+
+    if (!applicantRole) {
+      throw new Error("Applicant role not found.");
+    }
+
+    if (!defaultJobType) {
+      throw new Error("Default job type not found.");
+    }
+
     /**
      * Create user
      */
@@ -30,6 +45,8 @@ const register = async (payload) => {
         phone_number: payload.phoneNumber,
         address: payload.address,
         postcode: payload.postcode,
+        role_id: applicantRole.id,
+        job_type_id: payload.jobTypeId ?? defaultJobType.id,
       },
       transaction,
     );
@@ -37,23 +54,6 @@ const register = async (payload) => {
     /**
      * Applicant role
      */
-    const applicantRole = await authRepository.findRoleByName("APPLICANT");
-
-    if (!applicantRole) {
-      throw new Error("Applicant role not found.");
-    }
-
-    /**
-     * Assign role
-     */
-    await authRepository.assignRole(
-      {
-        user_id: user.id,
-        role_id: applicantRole.id,
-        assigned_at: new Date(),
-      },
-      transaction,
-    );
 
     /**
      * Generate verification token
@@ -181,8 +181,121 @@ const setPassword = async ({ token, password }) => {
     throw error;
   }
 };
+
+const login = async ({ email, password }, request) => {
+  const user = await authRepository.findUserByEmail(email);
+
+  if (!user) {
+    throw new UnauthorizedException("Invalid email or password.");
+  }
+
+  if (!user.is_email_verified) {
+    throw new UnauthorizedException("Please verify your email address.");
+  }
+
+  if (!user.password) {
+    throw new UnauthorizedException("Please complete your account setup.");
+  }
+
+  const passwordMatches = await passwordService.compare(
+    password,
+    user.password,
+  );
+
+  if (!passwordMatches) {
+    throw new UnauthorizedException("Invalid email or password.");
+  }
+
+  const transaction = await sequelize.transaction();
+
+  try {
+    const session = await authRepository.createSession(
+      {
+        user_id: user.id,
+
+        device_name: null, //request.headers["sec-ch-ua"] ??
+
+        ip_address: request.ip,
+
+        user_agent: request.headers["user-agent"],
+
+        expires_at: new Date(Date.now() + SESSION_DURATION),
+      },
+      transaction,
+    );
+
+    const accessToken = jwtService.generateAccessToken({
+      userId: user.id,
+      sessionId: session.id,
+    });
+
+    const refreshToken = jwtService.generateRefreshToken({
+      userId: user.id,
+      sessionId: session.id,
+    });
+
+    await authRepository.updateSession(
+      session,
+      {
+        refresh_token_hash: tokenService.hash(refreshToken),
+      },
+      transaction,
+    );
+
+    await authRepository.updateLastLogin(user, transaction);
+
+    await transaction.commit();
+
+    return {
+      user: userMapper.toAuthenticatedUser(user),
+      accessToken,
+      refreshToken,
+    };
+  } catch (error) {
+    await transaction.rollback();
+
+    throw error;
+  }
+};
+
+/**
+ * Logout the current session.
+ */
+const logout = async (session) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    await authRepository.revokeSession(session, transaction);
+
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+
+    throw error;
+  }
+};
+
+/**
+ * Logout from every device.
+ */
+const logoutAll = async (userId) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    await authRepository.revokeAllSessions(userId, transaction);
+
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+
+    throw error;
+  }
+};
 export const authService = {
   register,
   verifyEmail,
   setPassword,
+  login,
+  logout,
+  logoutAll,
 };

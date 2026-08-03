@@ -52,7 +52,7 @@ const startWorker = async () => {
     }
 
     // No work found, wait before polling again.
-    await sleep(10000);
+    await sleep(5000);
   }
 };
 

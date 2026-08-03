@@ -17,6 +17,7 @@ const envSchema = z.object({
   API_PREFIX: z.string(),
 
   API_VERSION: z.string(),
+  FRONTEND_URL: z.string(),
 
   DB_HOST: z.string(),
 

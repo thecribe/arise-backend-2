@@ -8,7 +8,12 @@ const hash = (token) => {
   return crypto.createHash("sha256").update(token).digest("hex");
 };
 
+const compare = (token, hashedToken) => {
+  return hash(token) === hashedToken;
+};
+
 export const tokenService = {
   generate,
   hash,
+  compare,
 };

@@ -13,7 +13,8 @@ const registerSchema = z.object({
 
   postcode: z.string().min(3, "Postcode is required"),
 
-  jobType: z.string().uuid("Invalid job type"),
+  // jobType: z.string().uuid("Invalid job type").optional(),
+  jobTypeId: z.string().optional(),
 
   acceptTerms: z.boolean().refine((value) => value === true, {
     message: "You must accept the terms and conditions",

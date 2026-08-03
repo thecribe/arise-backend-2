@@ -8,9 +8,9 @@ const success = (res, data = null, message = "Success", status = 200) => {
 
 const error = (
   res,
+  status = 500,
   message = "Something went wrong",
   errors = null,
-  status = 500,
 ) => {
   return res.status(status).json({
     success: false,

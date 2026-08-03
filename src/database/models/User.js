@@ -48,7 +48,14 @@ User.init(
       type: DataTypes.STRING(30),
       allowNull: false,
     },
-
+    role_id: {
+      type: DataTypes.UUID,
+      allowNull: false,
+    },
+    job_type_id: {
+      type: DataTypes.UUID,
+      allowNull: false,
+    },
     is_email_verified: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
@@ -62,6 +69,10 @@ User.init(
       type: DataTypes.BOOLEAN,
       defaultValue: true,
     },
+    deleted_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     sequelize,
@@ -70,6 +81,8 @@ User.init(
     underscored: true,
     timestamps: true,
     freezeTableName: true,
+    paranoid: true,
+    deletedAt: "deleted_at",
   },
 );
 
