@@ -10,10 +10,11 @@ import {
 } from "./auth.validation.js";
 
 const register = asyncHandler(async (req, res) => {
-  console.log("Register request body:", req.body); // Log the request body for debugging
   const payload = registerSchema.parse(req.body);
 
-  await authService.register(payload);
+  const { user, verificationToken } = await authService.register(payload);
+
+  console.log("User registered successfully:", user);
 
   return ApiResponse.success(
     res,

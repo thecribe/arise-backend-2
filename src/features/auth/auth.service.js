@@ -19,7 +19,7 @@ const register = async (payload) => {
   if (existingUser) {
     throw new Error("Email address already exists.");
   }
-  console.log(payload);
+
   const transaction = await sequelize.transaction();
 
   try {
@@ -100,11 +100,11 @@ const register = async (payload) => {
 
     return {
       user,
-      verificationToken: token,
+      verificationToken,
     };
   } catch (error) {
+    console.log("error", error);
     await transaction.rollback();
-
     throw error;
   }
 };

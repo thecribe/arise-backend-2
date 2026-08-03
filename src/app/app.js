@@ -71,7 +71,7 @@ app.use("/api/v1", apiV1Router);
 app.use((err, req, res, next) => {
   console.error(err);
 
-  return ApiResponse.error(res, 500, "Internal server error.");
+  return ApiResponse.error(res, 500, err.message || "Internal Server Error");
 });
 
 export { app };
