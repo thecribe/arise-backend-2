@@ -10,7 +10,7 @@ import { apiV1Router } from "../api/v1/index.js";
 import { env } from "../config/env.js";
 import { ApiResponse } from "../common/responses/api-response.js";
 
-const allowedOrigins = env.FRONTEND_URL.split(",").map((origin) =>
+const allowedOrigins = env.APP_URL.split(",").map((origin) =>
   origin.trim(),
 );
 const app = express();

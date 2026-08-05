@@ -4,7 +4,7 @@ import { emailService } from "../../../infrastructure/email/email.service.js";
 import { emailVerificationTemplate } from "../../../infrastructure/email/templates/email-verification.template.js";
 
 const emailVerificationHandler = async (payload) => {
-  const verificationUrl = `${env.FRONTEND_URL}/verify-email?token=${payload.token}`;
+  const verificationUrl = `${env.API_URL}/api/v1/auth/verify-email?token=${payload.token}`;
 
   const template = emailVerificationTemplate({
     firstName: payload.firstName,

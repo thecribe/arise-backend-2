@@ -13,11 +13,12 @@ const envSchema = z.object({
   APP_NAME: z.string(),
 
   APP_URL: z.string(),
+  API_URL: z.string(),
 
   API_PREFIX: z.string(),
 
   API_VERSION: z.string(),
-  FRONTEND_URL: z.string(),
+  // FRONTEND_URL: z.string(),
 
   DB_HOST: z.string(),
 

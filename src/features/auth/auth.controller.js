@@ -12,9 +12,8 @@ import {
 const register = asyncHandler(async (req, res) => {
   const payload = registerSchema.parse(req.body);
 
-  const { user, verificationToken } = await authService.register(payload);
+   await authService.register(payload);
 
-  console.log("User registered successfully:", user);
 
   return ApiResponse.success(
     res,
@@ -33,9 +32,10 @@ const verifyEmail = asyncHandler(async (req, res) => {
 
   const setPasswordToken = await authService.verifyEmail(token);
 
-  return res.redirect(
-    `${env.FRONTEND_URL}/set-password?token=${setPasswordToken}`,
-  );
+  // return res.redirect(
+  //   `${env.APP_URL}/set-password?token=${setPasswordToken}`,
+  // );
+  return ApiResponse.success(res, {setPasswordToken}, "Email verified successfully.");
 });
 
 const setPassword = asyncHandler(async (req, res) => {
