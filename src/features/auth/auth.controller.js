@@ -4,6 +4,7 @@ import { authCookie } from "../../common/utils/auth-cookie.js";
 
 import { authService } from "./auth.service.js";
 import {
+  forgotPasswordSchema,
   loginSchema,
   registerSchema,
   setPasswordSchema,
@@ -20,6 +21,18 @@ const register = asyncHandler(async (req, res) => {
     null,
     "Registration successful. Please check your email to verify your email address.",
     201,
+  );
+});
+
+const forgotPassword = asyncHandler(async (req, res) => {
+  const payload = forgotPasswordSchema.parse(req.body);
+
+  await authService.forgotPassword(payload.email);
+
+  return ApiResponse.success(
+    res,
+    null,
+    "If an account with that email exists, a password reset link has been sent."
   );
 });
 
@@ -116,6 +129,7 @@ export const authController = {
   register,
   verifyEmail,
   setPassword,
+  forgotPassword,
   login,
   me,
   logout,

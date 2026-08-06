@@ -149,6 +149,55 @@ const verifyEmail = async (token) => {
   }
 };
 
+const forgotPassword = async (email) => {
+  const user = await authRepository.findUserByEmail(email);
+
+  if (!user) {
+    throw new Error("User with this email does not exist.");
+  }
+  
+  const resetPasswordToken = tokenService.generate();
+
+    const tokenHash = tokenService.hash(resetPasswordToken);
+
+  const transaction = await sequelize.transaction();
+
+try {
+    await authRepository.createToken(
+      {
+        user_id: user.id,
+        type: TOKEN_TYPES.SET_PASSWORD,
+        token_hash: tokenHash,
+        expires_at: new Date(Date.now() + 60 * 60 * 1000),
+      },
+      transaction,
+    );
+
+    await jobService.dispatch(
+      {
+        type: JOB_TYPES.PASSWORD_RESET,
+        payload: {
+          userId: user.id,
+          firstName: user.first_name,
+          email: user.email,
+          token: resetPasswordToken,
+        },
+      },
+      transaction
+    );
+
+    await transaction.commit();
+     return {
+      user,
+      resetPasswordToken,
+    };
+  } catch (error) {
+    console.log("error", error);
+    await transaction.rollback();
+    throw error;
+  }
+};
+
 const setPassword = async ({ token, password }) => {
   const tokenHash = tokenService.hash(token);
 
@@ -296,6 +345,7 @@ export const authService = {
   register,
   verifyEmail,
   setPassword,
+  forgotPassword,
   login,
   logout,
   logoutAll,
