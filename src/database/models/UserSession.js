@@ -20,7 +20,7 @@ UserSession.init(
 
     refresh_token_hash: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
 
     device_name: DataTypes.STRING,

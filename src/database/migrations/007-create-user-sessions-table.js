@@ -23,7 +23,7 @@ export const up = async ({ context: queryInterface }) => {
 
     refresh_token_hash: {
       type: DataTypes.STRING(255),
-      allowNull: false,
+      allowNull: true,
     },
 
     device_name: {

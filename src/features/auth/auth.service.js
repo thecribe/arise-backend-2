@@ -186,15 +186,15 @@ const login = async ({ email, password }, request) => {
   const user = await authRepository.findUserByEmail(email);
 
   if (!user) {
-    throw new UnauthorizedException("Invalid email or password.");
+    throw new Error("Invalid email or password.");
   }
 
   if (!user.is_email_verified) {
-    throw new UnauthorizedException("Please verify your email address.");
+    throw new Error("Please verify your email address.");
   }
 
   if (!user.password) {
-    throw new UnauthorizedException("Please complete your account setup.");
+    throw new Error("Please complete your account setup.");
   }
 
   const passwordMatches = await passwordService.compare(
@@ -203,7 +203,7 @@ const login = async ({ email, password }, request) => {
   );
 
   if (!passwordMatches) {
-    throw new UnauthorizedException("Invalid email or password.");
+    throw new Error("Invalid email or password.");
   }
 
   const transaction = await sequelize.transaction();
@@ -234,6 +234,7 @@ const login = async ({ email, password }, request) => {
       sessionId: session.id,
     });
 
+    console.log({accessToken, refreshToken});
     await authRepository.updateSession(
       session,
       {

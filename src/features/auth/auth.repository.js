@@ -206,7 +206,6 @@ export const authRepository = {
   findUserById,
   createUser,
   findRoleByName,
-
   createToken,
   findToken,
   markTokenAsUsed,
