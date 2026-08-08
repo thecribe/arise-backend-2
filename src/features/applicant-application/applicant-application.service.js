@@ -257,6 +257,15 @@ const synchronizeApplication = async (
 
   return application;
 };
+/**
+ * Get the applicant application.
+ *
+ * If the applicant does not have an application,
+ * one is initialized automatically.
+ *
+ * Existing applications are synchronized with
+ * the current application definition.
+ */
 
 const getApplicantApplication = async (
   applicantId,
@@ -337,6 +346,555 @@ const getApplicantApplication = async (
   );
 };
 
+/**
+ * Get saved values for an applicant application section.
+ */
+const getSectionValues = async (
+  applicantId,
+  sectionId,
+) => {
+  const application =
+    await applicantApplicationRepository.findApplicationByApplicantId(
+      applicantId,
+    );
+
+  if (!application) {
+    throw new Error(
+      "Applicant application not found.",
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Get section definition
+  // ---------------------------------------------------------------------------
+
+  const section =
+    applicationDefinitionService.getSection(
+      sectionId,
+    );
+
+  if (!section) {
+    throw new Error(
+      "Application section definition not found.",
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Get applicant section progress
+  // ---------------------------------------------------------------------------
+
+  const sectionProgress =
+    await applicantApplicationRepository.findApplicationSection(
+      application.id,
+      sectionId,
+    );
+
+  if (!sectionProgress) {
+    throw new Error(
+      "Application section not found.",
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Get saved values
+  // ---------------------------------------------------------------------------
+
+  const sectionValues =
+    await applicantApplicationRepository.findSectionValues(
+      application.id,
+      sectionId,
+    );
+
+  // ---------------------------------------------------------------------------
+  // No saved values
+  // ---------------------------------------------------------------------------
+
+  if (!sectionValues) {
+    return {
+      sectionId,
+      applicantId,
+      status: sectionProgress.status,
+      values: section.repeatable
+        ? []
+        : {},
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Parse JSON stored in database
+  // ---------------------------------------------------------------------------
+
+  let values;
+
+  try {
+    values = JSON.parse(
+      sectionValues.values,
+    );
+  } catch {
+    throw new Error(
+      "Invalid section values stored in database.",
+    );
+  }
+
+  return {
+    sectionId,
+    applicantId,
+    status: sectionProgress.status,
+    values,
+  };
+};
+
+const saveSectionDraft = async (
+  applicantId,
+  sectionId,
+  values,
+) => {
+  return sequelize.transaction(
+    async (transaction) => {
+      // -----------------------------------------------------------------------
+      // Find applicant application
+      // -----------------------------------------------------------------------
+
+      const application =
+        await applicantApplicationRepository.findApplicationByApplicantId(
+          applicantId,
+          {
+            transaction,
+          },
+        );
+
+      if (!application) {
+        throw new Error(
+          "Applicant application not found.",
+        );
+      }
+
+      // -----------------------------------------------------------------------
+      // Find section definition
+      // -----------------------------------------------------------------------
+
+      const section =
+        applicationDefinitionService.getSection(
+          sectionId,
+        );
+
+      if (!section) {
+        throw new Error(
+          "Application section definition not found.",
+        );
+      }
+
+      // -----------------------------------------------------------------------
+      // Find applicant section progress
+      // -----------------------------------------------------------------------
+
+      const sectionProgress =
+        await applicantApplicationRepository.findApplicationSection(
+          application.id,
+          sectionId,
+          {
+            transaction,
+          },
+        );
+
+      if (!sectionProgress) {
+        throw new Error(
+          "Application section not found.",
+        );
+      }
+
+        // -----------------------------------------------------------------------
+      // Check section status
+      // -----------------------------------------------------------------------
+
+      if (sectionProgress.status === "locked") {
+        throw new Error(
+          "This application section is locked.",
+        );
+      }
+    
+
+      if (
+        sectionProgress.status ===
+        "submitted"
+      ) {
+        throw new Error(
+          "This application section has already been submitted.",
+        );
+      }
+
+      if (
+        sectionProgress.status ===
+        "approved"
+      ) {
+        throw new Error(
+          "This application section has already been approved.",
+        );
+      }
+      // -----------------------------------------------------------------------
+      // Validate repeatable section structure.
+      // -----------------------------------------------------------------------
+
+      if (
+        section.repeatable &&
+        !Array.isArray(values)
+      ) {
+        throw new Error(
+          "Repeatable section values must be an array.",
+        );
+      }
+
+      // -----------------------------------------------------------------------
+      // Validate non-repeatable section structure.
+      // -----------------------------------------------------------------------
+
+      if (
+        !section.repeatable &&
+        (
+          values === null ||
+          Array.isArray(values) ||
+          typeof values !== "object"
+        )
+      ) {
+        throw new Error(
+          "Non-repeatable section values must be an object.",
+        );
+      }
+
+      // -----------------------------------------------------------------------
+      // Find existing saved values.
+      // -----------------------------------------------------------------------
+
+      const existingValues =
+        await applicantApplicationRepository.findSectionValues(
+          application.id,
+          sectionId,
+          {
+            transaction,
+          },
+        );
+
+      // -----------------------------------------------------------------------
+      // Convert values to JSON string.
+      //
+      // The database stores this as a string because of the
+      // MySQL JSON/default-value compatibility issue.
+      // -----------------------------------------------------------------------
+
+      const serializedValues =
+        JSON.stringify(values);
+
+      // -----------------------------------------------------------------------
+      // Create or update.
+      // -----------------------------------------------------------------------
+
+      if (!existingValues) {
+        await applicantApplicationRepository.createSectionValues(
+          {
+            application_id: application.id,
+            section_id: sectionId,
+            values: serializedValues,
+          },
+          {
+            transaction,
+          },
+        );
+      } else {
+        await applicantApplicationRepository.updateSectionValues(
+          existingValues,
+          {
+            values: serializedValues,
+          },
+          {
+            transaction,
+          },
+        );
+      }
+
+      // -----------------------------------------------------------------------
+      // Return the same structure expected by the frontend.
+      //
+      // Saving a draft does NOT change the section status.
+      // -----------------------------------------------------------------------
+
+      return {
+        sectionId,
+        applicantId,
+        status: sectionProgress.status,
+        values,
+      };
+    },
+  );
+};
+const submitSection = async (
+  applicantId,
+  sectionId,
+) => {
+  return sequelize.transaction(
+    async (transaction) => {
+      // -----------------------------------------------------------------------
+      // Find applicant application
+      // -----------------------------------------------------------------------
+
+      const application =
+        await applicantApplicationRepository.findApplicationByApplicantId(
+          applicantId,
+          {
+            transaction,
+          },
+        );
+
+      if (!application) {
+        throw new Error(
+          "Applicant application not found.",
+        );
+      }
+
+      // -----------------------------------------------------------------------
+      // Find section definition
+      // -----------------------------------------------------------------------
+
+      const section =
+        applicationDefinitionService.getSection(
+          sectionId,
+        );
+
+      if (!section) {
+        throw new Error(
+          "Application section definition not found.",
+        );
+      }
+
+      // -----------------------------------------------------------------------
+      // Find applicant section progress
+      // -----------------------------------------------------------------------
+
+      const sectionProgress =
+        await applicantApplicationRepository.findApplicationSection(
+          application.id,
+          sectionId,
+          {
+            transaction,
+          },
+        );
+
+      if (!sectionProgress) {
+        throw new Error(
+          "Application section not found.",
+        );
+      }
+
+      // -----------------------------------------------------------------------
+      // Check section status
+      // -----------------------------------------------------------------------
+
+      if (
+        sectionProgress.status === "locked"
+      ) {
+        throw new Error(
+          "This application section is locked.",
+        );
+      }
+
+      if (
+        sectionProgress.status === "submitted"
+      ) {
+        throw new Error(
+          "This application section has already been submitted.",
+        );
+      }
+
+      if (
+        sectionProgress.status === "approved"
+      ) {
+        throw new Error(
+          "This application section has already been approved.",
+        );
+      }
+
+      // -----------------------------------------------------------------------
+      // Make sure values exist
+      // -----------------------------------------------------------------------
+
+      const sectionValues =
+        await applicantApplicationRepository.findSectionValues(
+          application.id,
+          sectionId,
+          {
+            transaction,
+          },
+        );
+
+      if (!sectionValues) {
+        throw new Error(
+          "Please save the application section before submitting.",
+        );
+      }
+
+      // -----------------------------------------------------------------------
+      // Validate stored JSON
+      // -----------------------------------------------------------------------
+
+      let values;
+
+      try {
+        values = JSON.parse(
+          sectionValues.values,
+        );
+      } catch {
+        throw new Error(
+          "Invalid section values stored in database.",
+        );
+      }
+
+      if (
+        values === null ||
+        values === undefined
+      ) {
+        throw new Error(
+          "Application section has no values to submit.",
+        );
+      }
+
+      // -----------------------------------------------------------------------
+      // Submit section
+      // -----------------------------------------------------------------------
+
+      const submittedAt = new Date();
+
+      await applicantApplicationRepository.updateApplicationSection(
+        sectionProgress,
+        {
+          status: "submitted",
+          submitted_at: submittedAt,
+        },
+        {
+          transaction,
+        },
+      );
+
+      // -----------------------------------------------------------------------
+      // Find the applicant phase this section belongs to
+      // -----------------------------------------------------------------------
+
+      const phase =
+        applicationDefinitionService.getPhase(
+          section.phaseId,
+        );
+
+      if (!phase) {
+        throw new Error(
+          "Application phase definition not found.",
+        );
+      }
+
+      const phaseProgress =
+        await applicantApplicationRepository.findApplicationPhase(
+          application.id,
+          phase.id,
+          {
+            transaction,
+          },
+        );
+
+      if (!phaseProgress) {
+        throw new Error(
+          "Application phase not found.",
+        );
+      }
+
+      // -----------------------------------------------------------------------
+      // Get all sections belonging to this phase
+      // -----------------------------------------------------------------------
+
+      const phaseSections =
+        applicationDefinitionService.getSections(
+          phase.id,
+        );
+
+      // -----------------------------------------------------------------------
+      // Get applicant progress for all sections
+      // -----------------------------------------------------------------------
+
+      const applicantSections =
+        await applicantApplicationRepository.findApplicationSections(
+          application.id,
+          {
+            transaction,
+          },
+        );
+
+      const applicantSectionMap =
+        new Map(
+          applicantSections.map(
+            (item) => [
+              item.section_id,
+              item,
+            ],
+          ),
+        );
+
+      // -----------------------------------------------------------------------
+      // Determine whether every section has been submitted.
+      // -----------------------------------------------------------------------
+
+      const phaseCompleted =
+        phaseSections.every(
+          (definition) => {
+            const progress =
+              applicantSectionMap.get(
+                definition.id,
+              );
+
+            return (
+              progress?.status ===
+                "submitted" ||
+              progress?.status ===
+                "approved"
+            );
+          },
+        );
+
+      // -----------------------------------------------------------------------
+      // If all sections are submitted,
+      // mark the phase as submitted.
+      // -----------------------------------------------------------------------
+
+      if (
+        phaseCompleted &&
+        phaseProgress.status !== "submitted" &&
+        phaseProgress.status !== "approved"
+      ) {
+        await applicantApplicationRepository.updateApplicationPhase(
+          phaseProgress,
+          {
+            status: "submitted",
+            completed_at: submittedAt,
+          },
+          {
+            transaction,
+          },
+        );
+      }
+
+      return {
+        sectionId,
+        applicantId,
+        status: "submitted",
+        values,
+        submittedAt,
+        phaseId: phase.id,
+        phaseStatus: phaseCompleted
+          ? "submitted"
+          : phaseProgress.status,
+      };
+    },
+  );
+};
+
 export {
   getApplicantApplication,
+  getSectionValues,
+  saveSectionDraft,
+  submitSection
 };

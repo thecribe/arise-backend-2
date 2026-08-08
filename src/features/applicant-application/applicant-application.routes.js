@@ -18,4 +18,34 @@ router.get(
   applicantApplicationController.getApplicantApplication,
 );
 
+/**
+ * Retrieve saved values for an application section.
+ */
+router.get(
+  "/sections/:sectionId/values",
+  authenticate,
+  authorize(PERMISSIONS.APPLICATION_VIEW.name),
+  applicantApplicationController.getSectionValues,
+);
+
+/**
+ * Save application section draft.
+ */
+router.patch(
+  "/sections/:sectionId/values",
+  authenticate,
+  authorize(PERMISSIONS.APPLICATION_UPDATE.name),
+  applicantApplicationController.saveSectionDraft,
+);
+
+/**
+ * Submit an application section.
+ */
+router.post(
+  "/sections/:sectionId/submit",
+  authenticate,
+  authorize(PERMISSIONS.APPLICATION_SUBMIT.name),
+  applicantApplicationController.submitSection,
+);
+
 export { router as applicantApplicationRouter };

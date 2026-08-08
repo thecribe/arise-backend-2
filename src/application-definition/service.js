@@ -43,9 +43,11 @@ getPhases() {
   /**
    * Returns all sections belonging to a phase.
    */
-  getSections(phaseId) {
-    return this.getPhase(phaseId)?.sections ?? [];
-  }
+getSections(phaseId) {
+  return [...(this.getPhase(phaseId)?.sections ?? [])].sort(
+    (a, b) => a.order - b.order,
+  );
+}
 
   /**
    * Returns one section.

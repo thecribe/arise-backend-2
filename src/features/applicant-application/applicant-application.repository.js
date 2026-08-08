@@ -2,6 +2,7 @@ import {
   ApplicantApplication,
   ApplicantApplicationPhase,
   ApplicantApplicationSection,
+  ApplicantApplicationSectionValue,
 } from "../../database/models/index.js";
 
 
@@ -84,7 +85,101 @@ const findApplicationSections = async (
     ...options,
   });
 };
+/**
+ * Find one section progress record.
+ */
+const findApplicationSection = async (
+  applicationId,
+  sectionId,
+  options = {},
+) => {
+  return ApplicantApplicationSection.findOne({
+    where: {
+      application_id: applicationId,
+      section_id: sectionId,
+    },
+    ...options,
+  });
+};
 
+/**
+ * Find saved values for an application section.
+ */
+const findSectionValues = async (
+  applicationId,
+  sectionId,
+  options = {},
+) => {
+  return ApplicantApplicationSectionValue.findOne({
+    where: {
+      application_id: applicationId,
+      section_id: sectionId,
+    },
+    ...options,
+  });
+};
+
+/**
+ * Create saved section values.
+ */
+const createSectionValues = async (
+  payload,
+  options = {},
+) => {
+  return ApplicantApplicationSectionValue.create(
+    payload,
+    options,
+  );
+};
+
+/**
+ * Update saved section values.
+ */
+const updateSectionValues = async (
+  sectionValues,
+  payload,
+  options = {},
+) => {
+  return sectionValues.update(
+    payload,
+    options,
+  );
+};
+
+const updateApplicationSection = async (
+  sectionProgress,
+  payload,
+  options = {},
+) => {
+  return sectionProgress.update(
+    payload,
+    options,
+  );
+};
+
+const updateApplicationPhase = async (
+  phaseProgress,
+  payload,
+  options = {},
+) => {
+  return phaseProgress.update(
+    payload,
+    options,
+  );
+};
+const findApplicationPhase = async (
+  applicationId,
+  phaseId,
+  options = {},
+) => {
+  return ApplicantApplicationPhase.findOne({
+    where: {
+      application_id: applicationId,
+      phase_id: phaseId,
+    },
+    ...options,
+  });
+};
 export {
   createApplication,
   createApplicationPhases,
@@ -93,4 +188,11 @@ export {
   findApplicationById,
   findApplicationPhases,
   findApplicationSections,
+  findApplicationSection,
+  findSectionValues,
+   createSectionValues,
+  updateSectionValues,
+  updateApplicationSection,
+  updateApplicationPhase,
+  findApplicationPhase,
 };
