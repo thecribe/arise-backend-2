@@ -1,3 +1,4 @@
+import { sequelize } from "../../config/database.js";
 import { jobTypeRepository } from "./job-type.repository.js";
 
 const getAll = async () => {

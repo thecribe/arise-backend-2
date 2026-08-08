@@ -12,20 +12,22 @@ class ApplicationDefinitionService {
   /**
    * Returns all phases.
    */
-  getPhases() {
-  return applicationDefinition.phases.map(
-    ({
-      id,
-      title,
-      description,
-      order,
-    }) => ({
-      id,
-      title,
-      description,
-      order,
-    })
-  );
+getPhases() {
+  return [...applicationDefinition.phases]
+    .sort((a, b) => a.order - b.order)
+    .map(
+      ({
+        id,
+        title,
+        description,
+        order,
+      }) => ({
+        id,
+        title,
+        description,
+        order,
+      }),
+    );
 }
   
 
