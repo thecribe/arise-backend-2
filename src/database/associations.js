@@ -5,7 +5,10 @@ import {
   RolePermission,
   Token,
   User,
-  UserSession,
+  UserSession, ApplicantApplication,
+  ApplicantApplicationPhase,
+  ApplicantApplicationSection,
+  ApplicantApplicationSectionValue
 } from "./models/index.js";
 
 const registerAssociations = () => {
@@ -66,6 +69,46 @@ const registerAssociations = () => {
     foreignKey: "job_type_id",
     as: "users",
   });
+
+  User.hasOne(ApplicantApplication, {
+  foreignKey: "applicant_id",
+  as: "application",
+});
+
+ApplicantApplication.belongsTo(User, {
+  foreignKey: "applicant_id",
+  as: "applicant",
+});
+
+ApplicantApplication.hasMany(ApplicantApplicationPhase, {
+  foreignKey: "application_id",
+  as: "phases",
+});
+
+ApplicantApplicationPhase.belongsTo(ApplicantApplication, {
+  foreignKey: "application_id",
+  as: "application",
+});
+
+ApplicantApplication.hasMany(ApplicantApplicationSection, {
+  foreignKey: "application_id",
+  as: "sections",
+});
+
+ApplicantApplicationSection.belongsTo(ApplicantApplication, {
+  foreignKey: "application_id",
+  as: "application",
+});
+
+ApplicantApplication.hasMany(ApplicantApplicationSectionValue, {
+  foreignKey: "application_id",
+  as: "sectionValues",
+});
+
+ApplicantApplicationSectionValue.belongsTo(ApplicantApplication, {
+  foreignKey: "application_id",
+  as: "application",
+});
 };
 
 export { registerAssociations };

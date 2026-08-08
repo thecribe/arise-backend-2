@@ -7,6 +7,10 @@ import { RolePermission } from "./RolePermission.js";
 import { Job } from "./Job.js";
 import { UserSession } from "./UserSession.js";
 import { JobType } from "./JobType.js";
+import { ApplicantApplication } from "./ApplicantApplication.js";
+import { ApplicantApplicationPhase } from "./ApplicantApplicationPhase.js";
+import { ApplicantApplicationSection } from "./ApplicantApplicationSection.js";
+import { ApplicantApplicationSectionValue } from "./ApplicantApplicationSectionValue.js";
 
 export {
   User,
@@ -17,4 +21,8 @@ export {
   Job,
   UserSession,
   JobType,
+  ApplicantApplication,
+  ApplicantApplicationPhase,
+  ApplicantApplicationSection,
+  ApplicantApplicationSectionValue
 };
