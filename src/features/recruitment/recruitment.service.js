@@ -1,0 +1,714 @@
+/**
+ * -----------------------------------------------------------------------------
+ * File: recruitment.service.js
+ *
+ * Description:
+ * Business logic for the Recruitment feature.
+ * -----------------------------------------------------------------------------
+ */
+
+import { recruitmentRepository } from "./recruitment.repository.js";
+
+import applicationDefinitionService from "../../application-definition/service.js";
+
+/**
+ * -----------------------------------------------------------------------------
+ * Get Recruitment default data.
+ * -----------------------------------------------------------------------------
+ *
+ * Job types come from the database.
+ *
+ * Application phases come from the hardcoded application definition.
+ */
+const getRecruitmentDefaultData = async () => {
+  const jobTypes = await recruitmentRepository.findJobTypes();
+
+  const phases = applicationDefinitionService.getPhases();
+
+  return {
+    jobTypes,
+    phases,
+  };
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ * Get Recruitment applicants.
+ * -----------------------------------------------------------------------------
+ *
+ * The query has already been validated by the controller.
+ *
+ * The service is responsible for:
+ * - Calling the repository.
+ * - Mapping database records into the Recruitment API contract.
+ * - Resolving the current application phase from the application definition.
+ */
+/**
+ * -----------------------------------------------------------------------------
+ * Get Recruitment applicants.
+ * -----------------------------------------------------------------------------
+ *
+ * The query has already been validated by the controller.
+ *
+ * The service is responsible for:
+ * - Validating application-definition references.
+ * - Calling the repository.
+ * - Mapping database records into the Recruitment API contract.
+ * -----------------------------------------------------------------------------
+ */
+const getRecruitmentApplicants = async (filters) => {
+  // ---------------------------------------------------------------------------
+  // Validate the requested phase.
+  //
+  // Phase IDs are defined by the application definition rather than the
+  // database, so this validation must happen against the definition service.
+  // ---------------------------------------------------------------------------
+
+  if (filters.phaseId) {
+    const phase = applicationDefinitionService.getPhase(filters.phaseId);
+
+    if (!phase) {
+      throw new Error("Application phase not found.");
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Get applicants from the repository.
+  // ---------------------------------------------------------------------------
+
+  const result = await recruitmentRepository.findApplicants(filters);
+
+  // ---------------------------------------------------------------------------
+  // Map database records into the Recruitment API contract.
+  // ---------------------------------------------------------------------------
+
+  const data = result.data.map((application) => {
+    const currentStage = applicationDefinitionService.getPhase(
+      application.current_phase_id,
+    );
+
+    const currentStatus = application.get("current_status");
+
+    if (!currentStatus) {
+      throw new Error(`Application "${application.id}" has no status history.`);
+    }
+
+    return {
+      applicantId: application.applicant_id,
+
+      applicationId: application.id,
+
+      applicant: {
+        id: application.applicant.id,
+
+        firstName: application.applicant.first_name,
+
+        lastName: application.applicant.last_name,
+
+        email: application.applicant.email,
+      },
+
+      jobType: application.applicant.jobType
+        ? {
+            id: application.applicant.jobType.id,
+
+            name: application.applicant.jobType.name,
+          }
+        : null,
+
+      /**
+       * Current application lifecycle status.
+       */
+      status: currentStatus,
+
+      /**
+       * Current application phase.
+       */
+      currentStage: currentStage
+        ? {
+            id: currentStage.id,
+            title: currentStage.title,
+            description: currentStage.description,
+            order: currentStage.order,
+          }
+        : null,
+
+      progress: application.progress,
+
+      submittedAt: application.submitted_at,
+
+      createdAt: application.created_at,
+
+      updatedAt: application.updated_at,
+    };
+  });
+
+  return {
+    data,
+
+    pagination: result.pagination,
+  };
+};
+
+/**
+ * =============================================================================
+ * SINGLE APPLICANT
+ * =============================================================================
+ */
+
+/**
+ * -----------------------------------------------------------------------------
+ * Resolve the current phase.
+ *
+ * Priority:
+ *
+ * 1. Valid phase stored on the application.
+ * 2. First phase from the application definition.
+ *
+ * This prevents an incomplete application record from producing an empty
+ * current phase on the frontend.
+ * -----------------------------------------------------------------------------
+ */
+const resolveCurrentPhase = (application) => {
+  const phases = applicationDefinitionService.getPhases();
+
+  if (!phases.length) {
+    throw new Error("Application definition has no phases.");
+  }
+
+  // ---------------------------------------------------------------------------
+  // Prefer database value.
+  // ---------------------------------------------------------------------------
+
+  if (application.current_phase_id) {
+    const currentPhase = applicationDefinitionService.getPhase(
+      application.current_phase_id,
+    );
+
+    if (currentPhase) {
+      return currentPhase;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Fall back to first phase.
+  // ---------------------------------------------------------------------------
+
+  return phases[0];
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ * Resolve current section.
+ *
+ * Priority:
+ *
+ * 1. Valid section stored on application.
+ * 2. First section belonging to current phase.
+ * 3. null if the phase has no sections.
+ * -----------------------------------------------------------------------------
+ */
+const resolveCurrentSection = (application, currentPhase) => {
+  // ---------------------------------------------------------------------------
+  // Prefer database value.
+  // ---------------------------------------------------------------------------
+
+  if (application.current_section_id) {
+    const currentSection = applicationDefinitionService.getSection(
+      application.current_section_id,
+    );
+
+    if (currentSection) {
+      return currentSection;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Fall back to first section of current phase.
+  // ---------------------------------------------------------------------------
+
+  const phaseSections = applicationDefinitionService.getSections(
+    currentPhase.id,
+  );
+
+  return phaseSections[0] ?? null;
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ * Get a single Recruitment applicant.
+ * -----------------------------------------------------------------------------
+ *
+ * Returns the lightweight applicant/application contract.
+ *
+ * Detailed section fields, values, repeatable entries and comments are NOT
+ * returned here.
+ */
+const getRecruitmentApplicant = async (applicantId) => {
+  // ---------------------------------------------------------------------------
+  // Find application.
+  // ---------------------------------------------------------------------------
+
+  const application =
+    await recruitmentRepository.findApplicantApplicationById(applicantId);
+
+  // ---------------------------------------------------------------------------
+  // An application itself is required.
+  //
+  // We do not manufacture an application when one does not exist.
+  // ---------------------------------------------------------------------------
+
+  if (!application) {
+    throw new Error("Applicant application not found.");
+  }
+
+  // ---------------------------------------------------------------------------
+  // Resolve default/current phase and section.
+  // ---------------------------------------------------------------------------
+
+  const currentPhase = resolveCurrentPhase(application);
+
+  const currentSection = resolveCurrentSection(application, currentPhase);
+
+  // ---------------------------------------------------------------------------
+  // Fetch applicant progress/status records.
+  // ---------------------------------------------------------------------------
+
+  const [latestStatus, phaseRecords, sectionRecords] = await Promise.all([
+    recruitmentRepository.findLatestApplicationStatus(application.id),
+
+    recruitmentRepository.findApplicantApplicationPhases(application.id),
+
+    recruitmentRepository.findApplicantApplicationSections(application.id),
+  ]);
+
+  // ---------------------------------------------------------------------------
+  // Resolve current application status.
+  //
+  // Existing applications should normally always have a status history because
+  // initializeApplication creates the initial IN_PROGRESS record.
+  //
+  // If the record is missing, IN_PROGRESS is used as a defensive fallback.
+  // ---------------------------------------------------------------------------
+
+  const currentStatus = latestStatus?.status ?? "IN_PROGRESS";
+
+  // ---------------------------------------------------------------------------
+  // Create phase lookup.
+  // ---------------------------------------------------------------------------
+
+  const phaseMap = new Map(
+    phaseRecords.map((phase) => [phase.phase_id, phase]),
+  );
+
+  // ---------------------------------------------------------------------------
+  // Create section lookup grouped by phase.
+  // ---------------------------------------------------------------------------
+
+  const sectionsByPhase = new Map();
+
+  for (const sectionRecord of sectionRecords) {
+    const sectionDefinition = applicationDefinitionService.getSection(
+      sectionRecord.section_id,
+    );
+
+    // -------------------------------------------------------------------------
+    // Ignore stale database section records that no longer exist in the
+    // application definition.
+    // -------------------------------------------------------------------------
+
+    if (!sectionDefinition) {
+      continue;
+    }
+
+    const phaseId = sectionDefinition.phaseId;
+
+    if (!sectionsByPhase.has(phaseId)) {
+      sectionsByPhase.set(phaseId, []);
+    }
+
+    sectionsByPhase.get(phaseId).push({
+      id: sectionDefinition.id,
+
+      title: sectionDefinition.title,
+
+      status: sectionRecord.status,
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Build phases from the application definition.
+  //
+  // This guarantees that the frontend always receives the complete application
+  // structure, even if some progress records are missing.
+  // ---------------------------------------------------------------------------
+
+  const phases = applicationDefinitionService.getPhases().map((phase) => {
+    const phaseRecord = phaseMap.get(phase.id);
+
+    const isCurrentPhase = phase.id === currentPhase.id;
+
+    // ---------------------------------------------------------------------
+    // Determine phase status.
+    //
+    // Database status wins.
+    //
+    // If there is no database record:
+    //
+    // - current phase -> in_progress
+    // - other phases  -> locked
+    // ---------------------------------------------------------------------
+
+    const phaseStatus =
+      phaseRecord?.status ?? (isCurrentPhase ? "in_progress" : "locked");
+
+    // ---------------------------------------------------------------------
+    // Get database section summaries.
+    // ---------------------------------------------------------------------
+
+    const existingSections = sectionsByPhase.get(phase.id) ?? [];
+
+    // ---------------------------------------------------------------------
+    // Create lookup for existing sections.
+    // ---------------------------------------------------------------------
+
+    const existingSectionMap = new Map(
+      existingSections.map((section) => [section.id, section]),
+    );
+
+    // ---------------------------------------------------------------------
+    // Build sections from the definition.
+    //
+    // This guarantees sections are returned even when progress records
+    // have not been created yet.
+    // ---------------------------------------------------------------------
+
+    const sections = applicationDefinitionService
+      .getSections(phase.id)
+      .map((section) => {
+        const existingSection = existingSectionMap.get(section.id);
+
+        return {
+          id: section.id,
+
+          title: section.title,
+
+          status:
+            existingSection?.status ??
+            (isCurrentPhase ? "in_progress" : "locked"),
+        };
+      });
+
+    return {
+      id: phase.id,
+
+      title: phase.title,
+
+      description: phase.description,
+
+      order: phase.order,
+
+      status: phaseStatus,
+
+      sections,
+    };
+  });
+
+  // ---------------------------------------------------------------------------
+  // Resolve progress.
+  //
+  // Missing progress defaults to 0.
+  // ---------------------------------------------------------------------------
+
+  const progress = Number.isFinite(Number(application.progress))
+    ? Number(application.progress)
+    : 0;
+
+  // ---------------------------------------------------------------------------
+  // Return Recruitment applicant detail.
+  // ---------------------------------------------------------------------------
+
+  return {
+    applicant: {
+      id: application.applicant.id,
+
+      firstName: application.applicant.first_name,
+
+      lastName: application.applicant.last_name,
+
+      email: application.applicant.email,
+
+      phone: application.applicant.phone_number ?? null,
+
+      address: application.applicant.address ?? null,
+
+      postcode: application.applicant.postcode ?? null,
+    },
+
+    jobType: application.applicant.jobType
+      ? {
+          id: application.applicant.jobType.id,
+
+          name: application.applicant.jobType.name,
+        }
+      : null,
+
+    /**
+     * Current overall application status.
+     */
+    status: currentStatus,
+
+    /**
+     * Latest status transition.
+     *
+     * This is useful for the applicant detail page and gives us the reason
+     * behind a rejection when one exists.
+     */
+    latestStatus: latestStatus
+      ? {
+          id: latestStatus.id,
+
+          previousStatus: latestStatus.previous_status,
+
+          status: latestStatus.status,
+
+          reason: latestStatus.reason,
+
+          changedBy: latestStatus.changed_by,
+
+          createdAt: latestStatus.created_at,
+        }
+      : null,
+
+    application: {
+      id: application.id,
+
+      currentPhase: currentPhase
+        ? {
+            id: currentPhase.id,
+
+            title: currentPhase.title,
+
+            description: currentPhase.description,
+
+            order: currentPhase.order,
+          }
+        : null,
+
+      currentSection: currentSection
+        ? {
+            id: currentSection.id,
+
+            title: currentSection.title,
+          }
+        : null,
+
+      progress,
+
+      submittedAt: application.submitted_at ?? null,
+
+      createdAt: application.created_at,
+
+      updatedAt: application.updated_at,
+
+      phases,
+    },
+  };
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ * Get a single application section for Recruitment review.
+ * -----------------------------------------------------------------------------
+ *
+ * The repository provides database state:
+ *
+ * - section progress
+ * - saved applicant values
+ * - review comments
+ *
+ * The application definition provides:
+ *
+ * - section title
+ * - description
+ * - order
+ * - fields
+ * - repeatable configuration
+ *
+ * The service combines both into the Recruitment API contract.
+ * -----------------------------------------------------------------------------
+ */
+const getRecruitmentApplicantSection = async (applicationId, sectionId) => {
+  /**
+   * ---------------------------------------------------------------------------
+   * Validate the application definition section first.
+   * ---------------------------------------------------------------------------
+   *
+   * Section definitions are not stored in the database.
+   */
+  const sectionDefinition = applicationDefinitionService.getSection(sectionId);
+
+  if (!sectionDefinition) {
+    throw new Error("Application section definition not found.");
+  }
+
+  /**
+   * ---------------------------------------------------------------------------
+   * Retrieve database information.
+   * ---------------------------------------------------------------------------
+   */
+  const result = await recruitmentRepository.findApplicationSectionDetails(
+    applicationId,
+    sectionId,
+  );
+
+  if (!result) {
+    throw new Error("Application section not found.");
+  }
+
+  const { section, sectionValues, comments } = result;
+
+  /**
+   * ---------------------------------------------------------------------------
+   * Resolve applicant values.
+   *
+   * The database may not contain saved values yet.
+   *
+   * We therefore return the appropriate empty structure rather than forcing
+   * the frontend to handle null values.
+   *
+   * Normal section:
+   *
+   * {}
+   *
+   * Repeatable section:
+   *
+   * []
+   * ---------------------------------------------------------------------------
+   */
+  let values;
+
+  if (!sectionValues) {
+    values = sectionDefinition.repeatable ? [] : {};
+  } else {
+    /**
+     * -------------------------------------------------------------------------
+     * Parse the JSON stored in the database.
+     * -------------------------------------------------------------------------
+     */
+    try {
+      values = JSON.parse(sectionValues.values);
+    } catch {
+      throw new Error("Invalid section values stored in database.");
+    }
+
+    /**
+     * -------------------------------------------------------------------------
+     * Protect the API contract from malformed/null values.
+     * -------------------------------------------------------------------------
+     */
+    if (values === null || values === undefined) {
+      values = sectionDefinition.repeatable ? [] : {};
+    }
+
+    /**
+     * -------------------------------------------------------------------------
+     * Ensure repeatable sections always return arrays.
+     * -------------------------------------------------------------------------
+     */
+    if (sectionDefinition.repeatable && !Array.isArray(values)) {
+      throw new Error("Invalid repeatable section values.");
+    }
+
+    /**
+     * -------------------------------------------------------------------------
+     * Ensure normal sections always return objects.
+     * -------------------------------------------------------------------------
+     */
+    if (
+      !sectionDefinition.repeatable &&
+      (Array.isArray(values) || typeof values !== "object")
+    ) {
+      throw new Error("Invalid non-repeatable section values.");
+    }
+  }
+
+  /**
+   * ---------------------------------------------------------------------------
+   * Map review comments.
+   *
+   * Comments remain historical records and are returned oldest first by the
+   * repository.
+   * ---------------------------------------------------------------------------
+   */
+  const reviewComments = comments.map((comment) => ({
+    id: comment.id,
+
+    comment: comment.comment,
+
+    createdBy: {
+      id: comment.creator.id,
+
+      name: [comment.creator.first_name, comment.creator.last_name]
+        .filter(Boolean)
+        .join(" "),
+    },
+
+    createdAt: comment.created_at,
+  }));
+
+  /**
+   * ---------------------------------------------------------------------------
+   * Return Recruitment section contract.
+   * ---------------------------------------------------------------------------
+   */
+  return {
+    id: sectionDefinition.id,
+
+    /**
+     * Application-definition metadata.
+     */
+    phaseId: sectionDefinition.phaseId,
+
+    title: sectionDefinition.title,
+
+    description: sectionDefinition.description,
+
+    order: sectionDefinition.order,
+
+    repeatable: sectionDefinition.repeatable,
+
+    minItems: sectionDefinition.minItems,
+
+    maxItems: sectionDefinition.maxItems,
+
+    /**
+     * Applicant-specific section status.
+     */
+    status: section.status,
+
+    /**
+     * Application-definition fields.
+     */
+    fields: sectionDefinition.fields,
+
+    /**
+     * Applicant submitted values.
+     */
+    values,
+
+    /**
+     * Review history.
+     */
+    review: {
+      comments: reviewComments,
+    },
+  };
+};
+
+export {
+  getRecruitmentDefaultData,
+  getRecruitmentApplicants,
+  getRecruitmentApplicant,
+  getRecruitmentApplicantSection,
+};

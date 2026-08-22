@@ -5,10 +5,13 @@ import {
   RolePermission,
   Token,
   User,
-  UserSession, ApplicantApplication,
+  UserSession,
+  ApplicantApplication,
   ApplicantApplicationPhase,
   ApplicantApplicationSection,
-  ApplicantApplicationSectionValue
+  ApplicantApplicationSectionValue,
+  ApplicationStatusHistory,
+  ApplicationSectionReviewComment,
 } from "./models/index.js";
 
 const registerAssociations = () => {
@@ -71,44 +74,77 @@ const registerAssociations = () => {
   });
 
   User.hasOne(ApplicantApplication, {
-  foreignKey: "applicant_id",
-  as: "application",
-});
+    foreignKey: "applicant_id",
+    as: "application",
+  });
 
-ApplicantApplication.belongsTo(User, {
-  foreignKey: "applicant_id",
-  as: "applicant",
-});
+  ApplicantApplication.belongsTo(User, {
+    foreignKey: "applicant_id",
+    as: "applicant",
+  });
 
-ApplicantApplication.hasMany(ApplicantApplicationPhase, {
-  foreignKey: "application_id",
-  as: "phases",
-});
+  ApplicantApplication.hasMany(ApplicantApplicationPhase, {
+    foreignKey: "application_id",
+    as: "phases",
+  });
 
-ApplicantApplicationPhase.belongsTo(ApplicantApplication, {
-  foreignKey: "application_id",
-  as: "application",
-});
+  ApplicantApplicationPhase.belongsTo(ApplicantApplication, {
+    foreignKey: "application_id",
+    as: "application",
+  });
 
-ApplicantApplication.hasMany(ApplicantApplicationSection, {
-  foreignKey: "application_id",
-  as: "sections",
-});
+  ApplicantApplication.hasMany(ApplicantApplicationSection, {
+    foreignKey: "application_id",
+    as: "sections",
+  });
 
-ApplicantApplicationSection.belongsTo(ApplicantApplication, {
-  foreignKey: "application_id",
-  as: "application",
-});
+  ApplicantApplicationSection.belongsTo(ApplicantApplication, {
+    foreignKey: "application_id",
+    as: "application",
+  });
 
-ApplicantApplication.hasMany(ApplicantApplicationSectionValue, {
-  foreignKey: "application_id",
-  as: "sectionValues",
-});
+  ApplicantApplication.hasMany(ApplicantApplicationSectionValue, {
+    foreignKey: "application_id",
+    as: "sectionValues",
+  });
 
-ApplicantApplicationSectionValue.belongsTo(ApplicantApplication, {
-  foreignKey: "application_id",
-  as: "application",
-});
+  ApplicantApplicationSectionValue.belongsTo(ApplicantApplication, {
+    foreignKey: "application_id",
+    as: "application",
+  });
+
+  ApplicantApplication.hasMany(ApplicationStatusHistory, {
+    foreignKey: "application_id",
+    as: "statusHistory",
+    onDelete: "CASCADE",
+    onUpdate: "CASCADE",
+  });
+
+  ApplicationStatusHistory.belongsTo(ApplicantApplication, {
+    foreignKey: "application_id",
+    as: "application",
+  });
 };
+ApplicantApplication.hasMany(ApplicationSectionReviewComment, {
+  foreignKey: "application_id",
+  as: "sectionReviewComments",
+  onDelete: "CASCADE",
+  onUpdate: "CASCADE",
+});
+
+ApplicationSectionReviewComment.belongsTo(ApplicantApplication, {
+  foreignKey: "application_id",
+  as: "application",
+});
+
+ApplicationSectionReviewComment.belongsTo(User, {
+  foreignKey: "created_by",
+  as: "creator",
+});
+
+User.hasMany(ApplicationSectionReviewComment, {
+  foreignKey: "created_by",
+  as: "applicationSectionReviewComments",
+});
 
 export { registerAssociations };

@@ -13,35 +13,47 @@
  */
 
 export const PHASE_IDS = {
-  PERSONAL_INFORMATION: "personal-information",
-  RIGHT_TO_WORK: "right-to-work",
-  EMPLOYMENT_HISTORY: "employment-history",
-  REFERENCES: "references",
-  COMPLIANCE: "compliance",
-  DECLARATION: "declaration",
+  APPLICATION_FORM: "application-form",
+  INTERVIEW_AVAILABILITY: "interview-availability",
+  EQUALITY_MONITORING: "equality-monitoring",
+
+  // ADDRESS_CONTACT_INFORMATION: "address-contact-information",
+  // RIGHT_TO_WORK: "right-to-work",
+  // EMPLOYMENT_HISTORY: "employment-history",
+  // REFERENCES: "references",
+  // COMPLIANCE: "compliance",
+  // DECLARATION: "declaration",
 };
 
 export const SECTION_IDS = {
-  // Personal Information
-  BASIC_INFORMATION: "basic-information",
-  EMERGENCY_CONTACTS: "emergency-contacts",
-  CONTACT_INFORMATION: "contact-information",
-  ADDRESS_INFORMATION: "address-information",
-
-  // Right to Work
-  RIGHT_TO_WORK: "right-to-work",
-
-  // Employment
+  //Application form
+  PERSONAL_INFORMATION: "personal-information",
+  ADDRESS_CONTACT_INFORMATION: "address-contact-information",
   EMPLOYMENT_HISTORY: "employment-history",
+  EDUCATIONAL_HISTORY: "educational-qualification",
+  UPLOAD_CV: "upload-cv",
 
-  // References
-  REFERENCES: "references",
+  //Equality Monitoring
+  EQUALITY_MONITORING: "equality-monitoring",
 
-  // Compliance
-  COMPLIANCE_DOCUMENTS: "compliance-documents",
+  // Interview Availability
+  INTERVIEW_AVAILABILITY: "interview-availability",
 
-  // Declaration
-  DECLARATION: "declaration",
+  // EMERGENCY_CONTACTS: "emergency-contacts",
+  // CONTACT_INFORMATION: "contact-information",
+  // ADDRESS_INFORMATION: "address-information",
+
+  // // Right to Work
+  // RIGHT_TO_WORK: "right-to-work",
+
+  // // References
+  // REFERENCES: "references",
+
+  // // Compliance
+  // COMPLIANCE_DOCUMENTS: "compliance-documents",
+
+  // // Declaration
+  // DECLARATION: "declaration",
 };
 
 /**
@@ -55,6 +67,7 @@ export const FIELD_TYPES = {
   PHONE: "tel",
   NUMBER: "number",
   DATE: "date",
+  TIME: "time",
   TEXTAREA: "textarea",
 
   SELECT: "select",
@@ -89,3 +102,9 @@ export const APPLICATION_STATUSES = [
   "rejected",
   "approved",
 ];
+
+export const APPLICATION_STATUS = {
+  IN_PROGRESS: "IN_PROGRESS",
+  REJECTED: "REJECTED",
+  APPROVED: "APPROVED",
+};

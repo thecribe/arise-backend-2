@@ -11,6 +11,8 @@ import { ApplicantApplication } from "./ApplicantApplication.js";
 import { ApplicantApplicationPhase } from "./ApplicantApplicationPhase.js";
 import { ApplicantApplicationSection } from "./ApplicantApplicationSection.js";
 import { ApplicantApplicationSectionValue } from "./ApplicantApplicationSectionValue.js";
+import { ApplicationStatusHistory } from "./ApplicationStatusHistory.js";
+import { ApplicationSectionReviewComment } from "./ApplicationSectionReviewComment.js";
 
 export {
   User,
@@ -24,5 +26,7 @@ export {
   ApplicantApplication,
   ApplicantApplicationPhase,
   ApplicantApplicationSection,
-  ApplicantApplicationSectionValue
+  ApplicantApplicationSectionValue,
+  ApplicationStatusHistory,
+  ApplicationSectionReviewComment,
 };

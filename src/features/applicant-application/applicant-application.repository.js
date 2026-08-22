@@ -3,44 +3,25 @@ import {
   ApplicantApplicationPhase,
   ApplicantApplicationSection,
   ApplicantApplicationSectionValue,
+  ApplicationStatusHistory,
 } from "../../database/models/index.js";
 
-
-
-const createApplication = async (
-  payload,
-  options = {},
-) => {
-  return ApplicantApplication.create(
-    payload,
-    options,
-  );
+const createApplication = async (payload, options = {}) => {
+  return ApplicantApplication.create(payload, options);
 };
 
-const createApplicationPhases = async (
-  payload,
-  options = {},
-) => {
-  return ApplicantApplicationPhase.bulkCreate(
-    payload,
-    options,
-  );
+const createApplicationStatusHistory = async (payload, options = {}) => {
+  return ApplicationStatusHistory.create(payload, options);
+};
+const createApplicationPhases = async (payload, options = {}) => {
+  return ApplicantApplicationPhase.bulkCreate(payload, options);
 };
 
-const createApplicationSections = async (
-  payload,
-  options = {},
-) => {
-  return ApplicantApplicationSection.bulkCreate(
-    payload,
-    options,
-  );
+const createApplicationSections = async (payload, options = {}) => {
+  return ApplicantApplicationSection.bulkCreate(payload, options);
 };
 
-const findApplicationByApplicantId = async (
-  applicantId,
-  options = {},
-) => {
+const findApplicationByApplicantId = async (applicantId, options = {}) => {
   return ApplicantApplication.findOne({
     where: {
       applicant_id: applicantId,
@@ -50,20 +31,11 @@ const findApplicationByApplicantId = async (
   });
 };
 
-const findApplicationById = async (
-  applicationId,
-  options = {},
-) => {
-  return ApplicantApplication.findByPk(
-    applicationId,
-    options,
-  );
+const findApplicationById = async (applicationId, options = {}) => {
+  return ApplicantApplication.findByPk(applicationId, options);
 };
 
-const findApplicationPhases = async (
-  applicationId,
-  options = {},
-) => {
+const findApplicationPhases = async (applicationId, options = {}) => {
   return ApplicantApplicationPhase.findAll({
     where: {
       application_id: applicationId,
@@ -73,10 +45,7 @@ const findApplicationPhases = async (
   });
 };
 
-const findApplicationSections = async (
-  applicationId,
-  options = {},
-) => {
+const findApplicationSections = async (applicationId, options = {}) => {
   return ApplicantApplicationSection.findAll({
     where: {
       application_id: applicationId,
@@ -105,11 +74,7 @@ const findApplicationSection = async (
 /**
  * Find saved values for an application section.
  */
-const findSectionValues = async (
-  applicationId,
-  sectionId,
-  options = {},
-) => {
+const findSectionValues = async (applicationId, sectionId, options = {}) => {
   return ApplicantApplicationSectionValue.findOne({
     where: {
       application_id: applicationId,
@@ -122,28 +87,15 @@ const findSectionValues = async (
 /**
  * Create saved section values.
  */
-const createSectionValues = async (
-  payload,
-  options = {},
-) => {
-  return ApplicantApplicationSectionValue.create(
-    payload,
-    options,
-  );
+const createSectionValues = async (payload, options = {}) => {
+  return ApplicantApplicationSectionValue.create(payload, options);
 };
 
 /**
  * Update saved section values.
  */
-const updateSectionValues = async (
-  sectionValues,
-  payload,
-  options = {},
-) => {
-  return sectionValues.update(
-    payload,
-    options,
-  );
+const updateSectionValues = async (sectionValues, payload, options = {}) => {
+  return sectionValues.update(payload, options);
 };
 
 const updateApplicationSection = async (
@@ -151,27 +103,13 @@ const updateApplicationSection = async (
   payload,
   options = {},
 ) => {
-  return sectionProgress.update(
-    payload,
-    options,
-  );
+  return sectionProgress.update(payload, options);
 };
 
-const updateApplicationPhase = async (
-  phaseProgress,
-  payload,
-  options = {},
-) => {
-  return phaseProgress.update(
-    payload,
-    options,
-  );
+const updateApplicationPhase = async (phaseProgress, payload, options = {}) => {
+  return phaseProgress.update(payload, options);
 };
-const findApplicationPhase = async (
-  applicationId,
-  phaseId,
-  options = {},
-) => {
+const findApplicationPhase = async (applicationId, phaseId, options = {}) => {
   return ApplicantApplicationPhase.findOne({
     where: {
       application_id: applicationId,
@@ -182,6 +120,7 @@ const findApplicationPhase = async (
 };
 export {
   createApplication,
+  createApplicationStatusHistory,
   createApplicationPhases,
   createApplicationSections,
   findApplicationByApplicantId,
@@ -190,7 +129,7 @@ export {
   findApplicationSections,
   findApplicationSection,
   findSectionValues,
-   createSectionValues,
+  createSectionValues,
   updateSectionValues,
   updateApplicationSection,
   updateApplicationPhase,
