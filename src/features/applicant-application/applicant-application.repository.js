@@ -4,6 +4,7 @@ import {
   ApplicantApplicationSection,
   ApplicantApplicationSectionValue,
   ApplicationStatusHistory,
+  User,
 } from "../../database/models/index.js";
 
 const createApplication = async (payload, options = {}) => {
@@ -118,6 +119,31 @@ const findApplicationPhase = async (applicationId, phaseId, options = {}) => {
     ...options,
   });
 };
+
+const findApplicantBySectionId = async (sectionId, options = {}) => {
+  return ApplicantApplicationSection.findOne({
+    where: {
+      section_id: sectionId,
+    },
+    include: [
+      {
+        model: ApplicantApplication,
+        as: "application",
+        include: [
+          {
+            model: User,
+            as: "applicant",
+            attributes: {
+              exclude: ["password"],
+            },
+          },
+        ],
+      },
+    ],
+
+    ...options,
+  });
+};
 export {
   createApplication,
   createApplicationStatusHistory,
@@ -134,4 +160,5 @@ export {
   updateApplicationSection,
   updateApplicationPhase,
   findApplicationPhase,
+  findApplicantBySectionId,
 };

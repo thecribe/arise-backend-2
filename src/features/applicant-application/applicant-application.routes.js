@@ -5,6 +5,9 @@ import { authorize } from "../../common/middleware/authorize.js";
 import { PERMISSIONS } from "../../common/constants/permissions.js";
 
 import { applicantApplicationController } from "./applicant-application.controller.js";
+import { loadUploadUser } from "../../common/middleware/load-applicant.js";
+import createUpload from "../../common/middleware/createUpload.js";
+import { applicationParseFormdata } from "../../common/middleware/applicationParseFormData.js";
 
 const router = Router();
 
@@ -35,6 +38,9 @@ router.patch(
   "/sections/:sectionId/values",
   authenticate,
   authorize(PERMISSIONS.APPLICATION_UPDATE.name),
+  loadUploadUser,
+  createUpload("applications").any(),
+  applicationParseFormdata,
   applicantApplicationController.saveSectionDraft,
 );
 

@@ -5,11 +5,9 @@ const getApplicantApplication = async (req, res) => {
   const applicantId = req.user.id;
 
   const application =
-    await applicantApplicationService.getApplicantApplication(
-      applicantId,
-    );
+    await applicantApplicationService.getApplicantApplication(applicantId);
 
-   return ApiResponse.success(
+  return ApiResponse.success(
     res,
     application,
     "Applicant application retrieved successfully.",
@@ -20,11 +18,10 @@ const getSectionValues = async (req, res) => {
 
   const { sectionId } = req.params;
 
-  const sectionValues =
-    await applicantApplicationService.getSectionValues(
-      applicantId,
-      sectionId,
-    );
+  const sectionValues = await applicantApplicationService.getSectionValues(
+    applicantId,
+    sectionId,
+  );
 
   return ApiResponse.success(
     res,
@@ -33,22 +30,16 @@ const getSectionValues = async (req, res) => {
   );
 };
 
-const saveSectionDraft = async (
-  req,
-  res,
-) => {
+const saveSectionDraft = async (req, res) => {
   const applicantId = req.user.id;
 
   const { sectionId } = req.params;
 
-  const { values } = req.body;
-
-  const sectionValues =
-    await applicantApplicationService.saveSectionDraft(
-      applicantId,
-      sectionId,
-      values,
-    );
+  const sectionValues = await applicantApplicationService.saveSectionDraft(
+    applicantId,
+    sectionId,
+    req.body,
+  );
 
   return ApiResponse.success(
     res,
@@ -57,19 +48,15 @@ const saveSectionDraft = async (
   );
 };
 
-const submitSection = async (
-  req,
-  res,
-) => {
+const submitSection = async (req, res) => {
   const applicantId = req.user.id;
 
   const { sectionId } = req.params;
 
-  const result =
-    await applicantApplicationService.submitSection(
-      applicantId,
-      sectionId,
-    );
+  const result = await applicantApplicationService.submitSection(
+    applicantId,
+    sectionId,
+  );
 
   return ApiResponse.success(
     res,
@@ -78,10 +65,9 @@ const submitSection = async (
   );
 };
 
-
 export const applicantApplicationController = {
   getApplicantApplication,
   getSectionValues,
   saveSectionDraft,
-  submitSection
+  submitSection,
 };

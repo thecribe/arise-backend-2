@@ -4,18 +4,25 @@ import cors from "cors";
 import compression from "compression";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
+import path from "path";
 
 import { apiV1Router } from "../api/v1/index.js";
 
 import { env } from "../config/env.js";
 import { ApiResponse } from "../common/responses/api-response.js";
 
-const allowedOrigins = env.APP_URL.split(",").map((origin) =>
-  origin.trim(),
-);
+const allowedOrigins = env.APP_URL.split(",").map((origin) => origin.trim());
 const app = express();
 
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        frameAncestors: ["'self'", "http://localhost:5173"],
+      },
+    },
+  }),
+);
 
 app.use(
   cors({
@@ -67,6 +74,8 @@ app.use("/api/v1", apiV1Router);
 //  * Global error handler
 //  */
 // app.use(errorHandler);
+
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 app.use((err, req, res, next) => {
   console.error(err);
