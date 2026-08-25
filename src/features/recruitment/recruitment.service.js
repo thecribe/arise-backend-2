@@ -10,6 +10,36 @@
 import { recruitmentRepository } from "./recruitment.repository.js";
 
 import applicationDefinitionService from "../../application-definition/service.js";
+import { canManagerUpdateSectionStatus } from "./application-section-status.utils.js";
+
+/**
+ * -----------------------------------------------------------------------------
+ * Map Recruitment section review comment.
+ *
+ * Converts the database model into the API response contract.
+ * -----------------------------------------------------------------------------
+ */
+const mapSectionReviewComment = (comment) => {
+  const data = comment.get({ plain: true });
+
+  return {
+    id: data.id,
+
+    comment: data.comment,
+
+    createdAt: data.createdAt,
+
+    updatedAt: data.updatedAt,
+
+    createdBy: {
+      id: data.creator?.id ?? data.created_by,
+
+      name: [data.creator?.first_name, data.creator?.last_name]
+        .filter(Boolean)
+        .join(" "),
+    },
+  };
+};
 
 /**
  * -----------------------------------------------------------------------------
@@ -31,18 +61,6 @@ const getRecruitmentDefaultData = async () => {
   };
 };
 
-/**
- * -----------------------------------------------------------------------------
- * Get Recruitment applicants.
- * -----------------------------------------------------------------------------
- *
- * The query has already been validated by the controller.
- *
- * The service is responsible for:
- * - Calling the repository.
- * - Mapping database records into the Recruitment API contract.
- * - Resolving the current application phase from the application definition.
- */
 /**
  * -----------------------------------------------------------------------------
  * Get Recruitment applicants.
@@ -641,21 +659,8 @@ const getRecruitmentApplicantSection = async (applicationId, sectionId) => {
    * repository.
    * ---------------------------------------------------------------------------
    */
-  const reviewComments = comments.map((comment) => ({
-    id: comment.id,
 
-    comment: comment.comment,
-
-    createdBy: {
-      id: comment.creator.id,
-
-      name: [comment.creator.first_name, comment.creator.last_name]
-        .filter(Boolean)
-        .join(" "),
-    },
-
-    createdAt: comment.created_at,
-  }));
+  const reviewComments = comments.map(mapSectionReviewComment);
 
   /**
    * ---------------------------------------------------------------------------
@@ -706,9 +711,308 @@ const getRecruitmentApplicantSection = async (applicationId, sectionId) => {
   };
 };
 
+const updateApplicationSectionStatus = async ({
+  applicationId,
+  sectionId,
+  status,
+  comment,
+  managerId,
+}) => {
+  return sequelize.transaction(async (transaction) => {
+    /**
+     * -------------------------------------------------------------------------
+     * Find current section record.
+     * -------------------------------------------------------------------------
+     */
+
+    const applicationSection =
+      await recruitmentRepository.findApplicationSection({
+        applicationId,
+        sectionId,
+        transaction,
+      });
+
+    if (!applicationSection) {
+      throw new Error("Application section not found.");
+    }
+
+    /**
+     * -------------------------------------------------------------------------
+     * Validate status transition.
+     * -------------------------------------------------------------------------
+     */
+
+    const canUpdate = canManagerUpdateSectionStatus(
+      applicationSection.status,
+      status,
+    );
+
+    if (!canUpdate) {
+      throw new Error(
+        `Cannot change section status from "${applicationSection.status}" to "${status}".`,
+      );
+    }
+
+    /**
+     * -------------------------------------------------------------------------
+     * Update the section status.
+     * -------------------------------------------------------------------------
+     */
+
+    await recruitmentRepository.updateApplicationSectionStatus({
+      applicationId,
+      sectionId,
+      status,
+      transaction,
+    });
+
+    /**
+     * -------------------------------------------------------------------------
+     * If rejecting, create the rejection comment.
+     *
+     * This uses the separate comment model you created earlier.
+     * -------------------------------------------------------------------------
+     */
+    if (status === "rejected") {
+      if (!comment?.trim()) {
+        throw new Error("A comment is required when rejecting a section.");
+      }
+
+      await recruitmentRepository.createSectionReviewComment({
+        applicationId,
+        sectionId,
+        comment,
+        createdBy: managerId,
+        transaction,
+      });
+    }
+
+    /**
+     * -------------------------------------------------------------------------
+     * Return updated section.
+     * -------------------------------------------------------------------------
+     */
+
+    return recruitmentRepository.findApplicationSection({
+      applicationId,
+      sectionId,
+      transaction,
+    });
+  });
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ * Create a Recruitment Manager review comment.
+ * -----------------------------------------------------------------------------
+ */
+const createSectionReviewComment = async ({
+  applicationId,
+  sectionId,
+  comment,
+  managerId,
+}) => {
+  /**
+   * ---------------------------------------------------------------------------
+   * Ensure the application section exists.
+   * ---------------------------------------------------------------------------
+   */
+
+  const section = await recruitmentRepository.findApplicationSection({
+    applicationId,
+    sectionId,
+  });
+
+  if (!section) {
+    throw new Error("Application section not found.");
+  }
+
+  /**
+   * ---------------------------------------------------------------------------
+   * Create the comment.
+   * ---------------------------------------------------------------------------
+   */
+
+  const createdComment = await recruitmentRepository.createSectionReviewComment(
+    {
+      applicationId,
+      sectionId,
+      comment,
+      managerId,
+    },
+  );
+
+  /**
+   * ---------------------------------------------------------------------------
+   * Retrieve the comment again with creator information.
+   * ---------------------------------------------------------------------------
+   */
+
+  const commentWithCreator =
+    await recruitmentRepository.findSectionReviewCommentById(createdComment.id);
+
+  if (!commentWithCreator) {
+    throw new Error("Review comment could not be retrieved.");
+  }
+
+  return mapSectionReviewComment(commentWithCreator);
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ * Update a Recruitment Manager review comment.
+ * -----------------------------------------------------------------------------
+ */
+const updateSectionReviewComment = async ({
+  applicationId,
+  sectionId,
+  commentId,
+  comment,
+  managerId,
+}) => {
+  /**
+   * ---------------------------------------------------------------------------
+   * Find the existing comment.
+   * ---------------------------------------------------------------------------
+   */
+
+  const existingComment =
+    await recruitmentRepository.findSectionReviewCommentById(commentId);
+
+  if (!existingComment) {
+    throw new Error("Review comment not found.");
+  }
+
+  /**
+   * ---------------------------------------------------------------------------
+   * Ensure the comment belongs to this application.
+   * ---------------------------------------------------------------------------
+   */
+
+  if (existingComment.application_id !== applicationId) {
+    throw new Error("Review comment does not belong to this application.");
+  }
+
+  /**
+   * ---------------------------------------------------------------------------
+   * Ensure the comment belongs to this section.
+   * ---------------------------------------------------------------------------
+   */
+
+  if (existingComment.section_id !== sectionId) {
+    throw new Error(
+      "Review comment does not belong to this application section.",
+    );
+  }
+
+  /**
+   * ---------------------------------------------------------------------------
+   * Only the creator can edit the comment.
+   * ---------------------------------------------------------------------------
+   */
+
+  if (existingComment.created_by !== managerId) {
+    throw new Error("You are not allowed to edit this review comment.");
+  }
+
+  /**
+   * ---------------------------------------------------------------------------
+   * Update the comment.
+   * ---------------------------------------------------------------------------
+   */
+
+  await recruitmentRepository.updateSectionReviewComment(commentId, {
+    comment,
+  });
+
+  /**
+   * ---------------------------------------------------------------------------
+   * Retrieve the updated comment.
+   * ---------------------------------------------------------------------------
+   */
+
+  const updatedComment =
+    await recruitmentRepository.findSectionReviewCommentById(commentId);
+
+  if (!updatedComment) {
+    throw new Error("Updated review comment could not be retrieved.");
+  }
+
+  return mapSectionReviewComment(updatedComment);
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ * Delete a Recruitment Manager review comment.
+ * -----------------------------------------------------------------------------
+ */
+const deleteSectionReviewComment = async ({
+  applicationId,
+  sectionId,
+  commentId,
+  managerId,
+}) => {
+  /**
+   * ---------------------------------------------------------------------------
+   * Find the existing comment.
+   * ---------------------------------------------------------------------------
+   */
+
+  const existingComment =
+    await recruitmentRepository.findSectionReviewCommentById(commentId);
+
+  if (!existingComment) {
+    throw new Error("Review comment not found.");
+  }
+
+  /**
+   * ---------------------------------------------------------------------------
+   * Ensure the comment belongs to this application.
+   * ---------------------------------------------------------------------------
+   */
+
+  if (existingComment.application_id !== applicationId) {
+    throw new Error("Review comment does not belong to this application.");
+  }
+
+  /**
+   * ---------------------------------------------------------------------------
+   * Ensure the comment belongs to this section.
+   * ---------------------------------------------------------------------------
+   */
+
+  if (existingComment.section_id !== sectionId) {
+    throw new Error(
+      "Review comment does not belong to this application section.",
+    );
+  }
+
+  /**
+   * ---------------------------------------------------------------------------
+   * Only the creator can delete the comment.
+   * ---------------------------------------------------------------------------
+   */
+
+  if (existingComment.created_by !== managerId) {
+    throw new Error("You are not allowed to delete this review comment.");
+  }
+
+  /**
+   * ---------------------------------------------------------------------------
+   * Delete the comment.
+   * ---------------------------------------------------------------------------
+   */
+
+  await recruitmentRepository.deleteSectionReviewComment(commentId);
+};
+
 export {
   getRecruitmentDefaultData,
   getRecruitmentApplicants,
   getRecruitmentApplicant,
   getRecruitmentApplicantSection,
+  updateApplicationSectionStatus,
+  createSectionReviewComment,
+  updateSectionReviewComment,
+  deleteSectionReviewComment,
 };

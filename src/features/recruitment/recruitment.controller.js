@@ -17,7 +17,16 @@ import {
   getRecruitmentApplicants,
   getRecruitmentApplicant,
   getRecruitmentApplicantSection,
+  updateApplicationSectionStatus,
+  createSectionReviewComment,
+  updateSectionReviewComment,
+  deleteSectionReviewComment,
 } from "./recruitment.service.js";
+import {
+  createSectionReviewCommentSchema,
+  updateApplicationSectionStatusSchema,
+  updateSectionReviewCommentSchema,
+} from "./recruitment.validation.js";
 
 /**
  * -----------------------------------------------------------------------------
@@ -122,4 +131,100 @@ export async function getRecruitmentApplicantSectionController(req, res) {
     section,
     "Recruitment application section retrieved successfully.",
   );
+}
+
+export async function updateApplicationSectionStatusController(req, res) {
+  const { applicationId, sectionId } = req.params;
+
+  const data = updateApplicationSectionStatusSchema.parse(req.body);
+
+  const section = await updateApplicationSectionStatus({
+    applicationId,
+    sectionId,
+
+    status: data.status,
+
+    comment: data.comment,
+
+    managerId: req.user.id,
+  });
+
+  return ApiResponse.success(
+    res,
+    section,
+    "Application section status updated successfully.",
+  );
+}
+
+/**
+ * -----------------------------------------------------------------------------
+ * Create Recruitment applicant section review comment
+ * -----------------------------------------------------------------------------
+ *
+ * Creates a new review comment for an application section.
+ */
+export async function createSectionReviewCommentController(req, res) {
+  const { applicationId, sectionId } = req.params;
+
+  const data = createSectionReviewCommentSchema.parse(req.body);
+
+  const comment = await createSectionReviewComment({
+    applicationId,
+    sectionId,
+    comment: data.comment,
+    managerId: req.user.id,
+  });
+
+  return ApiResponse.success(
+    res,
+    comment,
+    "Review comment created successfully.",
+  );
+}
+
+/**
+ * -----------------------------------------------------------------------------
+ * Update Recruitment applicant section review comment
+ * -----------------------------------------------------------------------------
+ *
+ * Updates an existing review comment.
+ */
+export async function updateSectionReviewCommentController(req, res) {
+  const { applicationId, sectionId, commentId } = req.params;
+
+  const data = updateSectionReviewCommentSchema.parse(req.body);
+
+  const comment = await updateSectionReviewComment({
+    applicationId,
+    sectionId,
+    commentId,
+    comment: data.comment,
+    managerId: req.user.id,
+  });
+
+  return ApiResponse.success(
+    res,
+    comment,
+    "Review comment updated successfully.",
+  );
+}
+
+/**
+ * -----------------------------------------------------------------------------
+ * Delete Recruitment applicant section review comment
+ * -----------------------------------------------------------------------------
+ *
+ * Deletes an existing review comment.
+ */
+export async function deleteSectionReviewCommentController(req, res) {
+  const { applicationId, sectionId, commentId } = req.params;
+
+  await deleteSectionReviewComment({
+    applicationId,
+    sectionId,
+    commentId,
+    managerId: req.user.id,
+  });
+
+  return ApiResponse.success(res, null, "Review comment deleted successfully.");
 }

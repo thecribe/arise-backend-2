@@ -14,6 +14,10 @@ import {
   getRecruitmentApplicantsController,
   getRecruitmentApplicantController,
   getRecruitmentApplicantSectionController,
+  updateApplicationSectionStatusController,
+  createSectionReviewCommentController,
+  updateSectionReviewCommentController,
+  deleteSectionReviewCommentController,
 } from "./recruitment.controller.js";
 import { authenticate } from "../../common/middleware/authenticate.js";
 import { PERMISSIONS } from "../../common/constants/permissions.js";
@@ -116,6 +120,80 @@ recruitmentRouter.get(
   authenticate,
   authorize(PERMISSIONS.RECRUITMENT_VIEW.name),
   getRecruitmentApplicantSectionController,
+);
+
+recruitmentRouter.patch(
+  "/applications/:applicationId/sections/:sectionId/status",
+  authenticate,
+  authorize(
+    PERMISSIONS.RECRUITMENT_VIEW.name,
+    PERMISSIONS.RECRUITMENT_APPROVE.name,
+  ),
+  updateApplicationSectionStatusController,
+);
+
+/**
+ * -----------------------------------------------------------------------------
+ * Create Recruitment applicant section review comment
+ * -----------------------------------------------------------------------------
+ *
+ * Allows a Recruitment Manager to add a review comment to an application
+ * section.
+ *
+ * Requires:
+ *
+ * RECRUITMENT_VIEW
+ */
+recruitmentRouter.post(
+  "/applications/:applicationId/sections/:sectionId/comments",
+
+  authenticate,
+
+  authorize(PERMISSIONS.RECRUITMENT_VIEW.name),
+
+  createSectionReviewCommentController,
+);
+
+/**
+ * -----------------------------------------------------------------------------
+ * Update Recruitment applicant section review comment
+ * -----------------------------------------------------------------------------
+ *
+ * Allows the creator of a review comment to update it.
+ *
+ * Requires:
+ *
+ * RECRUITMENT_VIEW
+ */
+recruitmentRouter.patch(
+  "/applications/:applicationId/sections/:sectionId/comments/:commentId",
+
+  authenticate,
+
+  authorize(PERMISSIONS.RECRUITMENT_VIEW.name),
+
+  updateSectionReviewCommentController,
+);
+
+/**
+ * -----------------------------------------------------------------------------
+ * Delete Recruitment applicant section review comment
+ * -----------------------------------------------------------------------------
+ *
+ * Allows the creator of a review comment to delete it.
+ *
+ * Requires:
+ *
+ * RECRUITMENT_VIEW
+ */
+recruitmentRouter.delete(
+  "/applications/:applicationId/sections/:sectionId/comments/:commentId",
+
+  authenticate,
+
+  authorize(PERMISSIONS.RECRUITMENT_VIEW.name),
+
+  deleteSectionReviewCommentController,
 );
 
 export { recruitmentRouter };

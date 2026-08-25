@@ -714,9 +714,76 @@ const submitSection = async (applicantId, sectionId) => {
   });
 };
 
+/**
+ * -----------------------------------------------------------------------------
+ * Get review comments for an applicant's application section.
+ *
+ * The applicant does not provide an application ID.
+ *
+ * The application is resolved from the authenticated applicant ID, ensuring
+ * that an applicant can only retrieve comments belonging to their own
+ * application.
+ * -----------------------------------------------------------------------------
+ */
+
+const getApplicantSectionReviewComments = async (applicantId, sectionId) => {
+  return sequelize.transaction(async (transaction) => {
+    /**
+     * -------------------------------------------------------------------------
+     * Find the authenticated applicant's application.
+     * -------------------------------------------------------------------------
+     */
+
+    const application =
+      await applicantApplicationRepository.findApplicationByApplicantId(
+        applicantId,
+        {
+          transaction,
+        },
+      );
+
+    if (!application) {
+      throw new Error("Applicant application not found.");
+    }
+
+    /**
+     * -------------------------------------------------------------------------
+     * Retrieve all comments belonging to this application section.
+     * -------------------------------------------------------------------------
+     */
+
+    const comments =
+      await applicantApplicationRepository.findApplicantSectionReviewComments(
+        application.id,
+        sectionId,
+        {
+          transaction,
+        },
+      );
+
+    /**
+     * -------------------------------------------------------------------------
+     * Return applicant-safe comment data.
+     *
+     * Manager identity is intentionally not exposed.
+     * -------------------------------------------------------------------------
+     */
+    return comments.map((comment) => {
+      const data = comment.get({ plain: true });
+
+      return {
+        id: data.id,
+        comment: data.comment,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      };
+    });
+  });
+};
 export {
   getApplicantApplication,
   getSectionValues,
   saveSectionDraft,
   submitSection,
+  getApplicantSectionReviewComments,
 };

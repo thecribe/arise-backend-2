@@ -26,14 +26,13 @@ ApplicantApplicationSection.init(
     status: {
       type: DataTypes.ENUM(
         "locked",
-        "draft",
         "in_progress",
         "submitted",
         "rejected",
         "approved",
       ),
       allowNull: false,
-      defaultValue: "locked",
+      defaultValue: "in_progress",
     },
 
     recruiter_comment: {

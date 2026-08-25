@@ -65,9 +65,36 @@ const submitSection = async (req, res) => {
   );
 };
 
+/**
+ * -----------------------------------------------------------------------------
+ * Get review comments for the authenticated applicant's application section.
+ *
+ * The frontend only provides the section ID.
+ *
+ * The applicant ID is obtained from the authenticated user.
+ * -----------------------------------------------------------------------------
+ */
+
+const getApplicantSectionReviewCommentsController = async (req, res) => {
+  const { sectionId } = req.params;
+
+  const comments =
+    await applicantApplicationService.getApplicantSectionReviewComments(
+      req.user.id,
+      sectionId,
+    );
+
+  return ApiResponse.success(
+    res,
+    comments,
+    "Application section review comments retrieved successfully.",
+  );
+};
+
 export const applicantApplicationController = {
   getApplicantApplication,
   getSectionValues,
   saveSectionDraft,
   submitSection,
+  getApplicantSectionReviewCommentsController,
 };

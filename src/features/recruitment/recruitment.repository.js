@@ -576,6 +576,126 @@ const findApplicationSectionDetails = async (
   };
 };
 
+const findApplicationSection = async ({
+  applicationId,
+  sectionId,
+  transaction,
+}) => {
+  return ApplicantApplicationSection.findOne({
+    where: {
+      application_id: applicationId,
+      section_id: sectionId,
+    },
+    transaction,
+  });
+};
+
+const updateApplicationSectionStatus = async ({
+  applicationId,
+  sectionId,
+  status,
+  transaction,
+}) => {
+  const [updated] = await ApplicantApplicationSection.update(
+    {
+      status,
+
+      /**
+       * Only set approved_at when approving.
+       */
+      approved_at: status === "approved" ? new Date() : null,
+    },
+    {
+      where: {
+        application_id: applicationId,
+        section_id: sectionId,
+      },
+      transaction,
+    },
+  );
+
+  return updated;
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ * Create a Recruitment Manager review comment.
+ * -----------------------------------------------------------------------------
+ */
+const createSectionReviewComment = async ({
+  applicationId,
+  sectionId,
+  comment,
+  managerId,
+  options = {},
+}) => {
+  return ApplicationSectionReviewComment.create(
+    {
+      application_id: applicationId,
+      section_id: sectionId,
+      comment,
+      created_by: managerId,
+    },
+    options,
+  );
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ * Find a single section review comment.
+ * -----------------------------------------------------------------------------
+ *
+ * Includes the manager who created the comment.
+ */
+const findSectionReviewCommentById = async (commentId, options = {}) => {
+  return ApplicationSectionReviewComment.findByPk(commentId, {
+    include: [
+      {
+        model: User,
+        as: "creator",
+        attributes: ["id", "first_name", "last_name"],
+      },
+    ],
+
+    ...options,
+  });
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ * Update a Recruitment Manager review comment.
+ * -----------------------------------------------------------------------------
+ */
+const updateSectionReviewComment = async (commentId, values, options = {}) => {
+  const comment = await ApplicationSectionReviewComment.findByPk(
+    commentId,
+    options,
+  );
+
+  if (!comment) {
+    return null;
+  }
+
+  await comment.update(values, options);
+
+  return comment;
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ * Delete a Recruitment Manager review comment.
+ * -----------------------------------------------------------------------------
+ */
+const deleteSectionReviewComment = async (commentId, options = {}) => {
+  return ApplicationSectionReviewComment.destroy({
+    where: {
+      id: commentId,
+    },
+
+    ...options,
+  });
+};
+
 /**
  * -----------------------------------------------------------------------------
  * Export Recruitment repository.
@@ -592,4 +712,12 @@ export const recruitmentRepository = {
   findApplicantApplicationSections,
 
   findApplicationSectionDetails,
+
+  findApplicationSection,
+  updateApplicationSectionStatus,
+
+  createSectionReviewComment,
+  findSectionReviewCommentById,
+  updateSectionReviewComment,
+  deleteSectionReviewComment,
 };

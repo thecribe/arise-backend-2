@@ -3,6 +3,7 @@ import {
   ApplicantApplicationPhase,
   ApplicantApplicationSection,
   ApplicantApplicationSectionValue,
+  ApplicationSectionReviewComment,
   ApplicationStatusHistory,
   User,
 } from "../../database/models/index.js";
@@ -144,6 +145,38 @@ const findApplicantBySectionId = async (sectionId, options = {}) => {
     ...options,
   });
 };
+
+/**
+ * -----------------------------------------------------------------------------
+ * Find all review comments for an applicant application section.
+ *
+ * Comments are returned in the order they were originally created.
+ *
+ * The applicant-facing response does not require the manager/creator details.
+ * -----------------------------------------------------------------------------
+ */
+
+const findApplicantSectionReviewComments = async (
+  applicationId,
+  sectionId,
+  options = {},
+) => {
+  return ApplicationSectionReviewComment.findAll({
+    where: {
+      application_id: applicationId,
+      section_id: sectionId,
+    },
+
+    attributes: ["id", "comment", "created_at", "updated_at"],
+
+    order: [
+      ["created_at", "ASC"],
+      ["id", "ASC"],
+    ],
+
+    ...options,
+  });
+};
 export {
   createApplication,
   createApplicationStatusHistory,
@@ -161,4 +194,5 @@ export {
   updateApplicationPhase,
   findApplicationPhase,
   findApplicantBySectionId,
+  findApplicantSectionReviewComments,
 };

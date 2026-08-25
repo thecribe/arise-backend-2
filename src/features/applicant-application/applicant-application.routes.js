@@ -54,4 +54,22 @@ router.post(
   applicantApplicationController.submitSection,
 );
 
+/**
+ * -----------------------------------------------------------------------------
+ * Applicant section review comments.
+ *
+ * Returns all manager comments associated with a section belonging to the
+ * authenticated applicant.
+ *
+ * The application is resolved internally using req.user.id.
+ * -----------------------------------------------------------------------------
+ */
+
+router.get(
+  "/sections/:sectionId/review-comments",
+  authenticate,
+  authorize(PERMISSIONS.APPLICATION_VIEW.name),
+  applicantApplicationController.getApplicantSectionReviewCommentsController,
+);
+
 export { router as applicantApplicationRouter };

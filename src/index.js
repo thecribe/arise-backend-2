@@ -13,7 +13,7 @@ const bootstrap = async () => {
 
     startServer();
 
-    void startWorker();
+    // void startWorker();
   } catch (error) {
     console.error(error);
 
