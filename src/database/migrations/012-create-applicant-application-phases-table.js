@@ -29,10 +29,9 @@ export const up = async ({ context: queryInterface }) => {
     status: {
       type: DataTypes.ENUM(
         "locked",
-        "draft",
+
         "in_progress",
-        "submitted",
-        "rejected",
+
         "approved",
       ),
       allowNull: false,

@@ -24,14 +24,7 @@ ApplicantApplicationPhase.init(
     },
 
     status: {
-      type: DataTypes.ENUM(
-        "locked",
-        "draft",
-        "in_progress",
-        "submitted",
-        "rejected",
-        "approved",
-      ),
+      type: DataTypes.ENUM("locked", "in_progress", "approved"),
       allowNull: false,
       defaultValue: "locked",
     },

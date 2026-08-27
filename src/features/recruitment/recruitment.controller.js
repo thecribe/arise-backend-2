@@ -21,9 +21,11 @@ import {
   createSectionReviewComment,
   updateSectionReviewComment,
   deleteSectionReviewComment,
+  updateApplicationPhaseStatus,
 } from "./recruitment.service.js";
 import {
   createSectionReviewCommentSchema,
+  updateApplicationPhaseStatusSchema,
   updateApplicationSectionStatusSchema,
   updateSectionReviewCommentSchema,
 } from "./recruitment.validation.js";
@@ -227,4 +229,37 @@ export async function deleteSectionReviewCommentController(req, res) {
   });
 
   return ApiResponse.success(res, null, "Review comment deleted successfully.");
+}
+
+/**
+ * -----------------------------------------------------------------------------
+ * Update Recruitment application phase status.
+ *
+ * Recruitment Managers control whether a phase is:
+ *
+ * - locked
+ * - in_progress
+ * - approved
+ *
+ * Updating the phase also synchronizes the statuses of all sections belonging
+ * to that phase.
+ * -----------------------------------------------------------------------------
+ */
+
+export async function updateApplicationPhaseStatusController(req, res) {
+  const { applicationId, phaseId } = req.params;
+
+  const data = updateApplicationPhaseStatusSchema.parse(req.body);
+
+  const phase = await updateApplicationPhaseStatus({
+    applicationId,
+    phaseId,
+    status: data.status,
+  });
+
+  return ApiResponse.success(
+    res,
+    phase,
+    "Application phase status updated successfully.",
+  );
 }

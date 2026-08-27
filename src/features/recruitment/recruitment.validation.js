@@ -31,3 +31,19 @@ export const updateSectionReviewCommentSchema = z.object({
     .min(1, "Comment is required.")
     .max(5000, "Comment cannot exceed 5000 characters."),
 });
+
+/**
+ * -----------------------------------------------------------------------------
+ * Update Application Phase Status Schema
+ * -----------------------------------------------------------------------------
+ */
+
+export const updateApplicationPhaseStatusSchema = z.object({
+  status: z.enum(["locked", "in_progress", "approved"]),
+});
+
+/**
+ * -----------------------------------------------------------------------------
+ * Valid application phase status transitions.
+ * -----------------------------------------------------------------------------
+ */

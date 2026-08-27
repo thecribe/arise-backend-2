@@ -10,7 +10,12 @@
 import { recruitmentRepository } from "./recruitment.repository.js";
 
 import applicationDefinitionService from "../../application-definition/service.js";
-import { canManagerUpdateSectionStatus } from "./application-section-status.utils.js";
+import {
+  canManagerUpdateSectionStatus,
+  validatePhaseStatusTransition,
+} from "./application-section-status.utils.js";
+import { recruitmentPhaseRepository } from "./recruitment-phase.repository.js";
+import { sequelize } from "../../config/database.js";
 
 /**
  * -----------------------------------------------------------------------------
@@ -782,7 +787,7 @@ const updateApplicationSectionStatus = async ({
         applicationId,
         sectionId,
         comment,
-        createdBy: managerId,
+        managerId: managerId,
         transaction,
       });
     }
@@ -1006,6 +1011,266 @@ const deleteSectionReviewComment = async ({
   await recruitmentRepository.deleteSectionReviewComment(commentId);
 };
 
+/**
+ * -----------------------------------------------------------------------------
+ * Update Application Phase Status
+ *
+ * Recruitment Managers control application phase progression.
+ *
+ * When a phase becomes in_progress:
+ *
+ * - Ensure all sections defined for that phase exist for the applicant.
+ * - Create any missing section records.
+ * - Set all phase sections to in_progress.
+ *
+ * When a phase becomes approved:
+ *
+ * - All sections become approved.
+ *
+ * When a phase becomes locked:
+ *
+ * - All sections become locked.
+ * -----------------------------------------------------------------------------
+ */
+
+const updateApplicationPhaseStatus = async ({
+  applicationId,
+  phaseId,
+  status,
+}) => {
+  return sequelize.transaction(async (transaction) => {
+    /**
+     * -------------------------------------------------------------------------
+     * Validate application.
+     * -------------------------------------------------------------------------
+     */
+
+    const application = await recruitmentPhaseRepository.findApplicationById(
+      applicationId,
+      {
+        transaction,
+      },
+    );
+
+    if (!application) {
+      throw new Error("Applicant application not found.");
+    }
+
+    /**
+     * -------------------------------------------------------------------------
+     * Validate phase definition.
+     * -------------------------------------------------------------------------
+     */
+
+    const phaseDefinition = applicationDefinitionService.getPhase(phaseId);
+
+    if (!phaseDefinition) {
+      throw new Error("Application phase definition not found.");
+    }
+
+    /**
+     * -------------------------------------------------------------------------
+     * Find applicant phase progress.
+     * -------------------------------------------------------------------------
+     */
+
+    const phase = await recruitmentPhaseRepository.findApplicationPhase({
+      applicationId,
+      phaseId,
+      transaction,
+    });
+
+    if (!phase) {
+      throw new Error("Applicant application phase not found.");
+    }
+
+    /**
+     * -------------------------------------------------------------------------
+     * Validate phase transition.
+     * -------------------------------------------------------------------------
+     */
+
+    validatePhaseStatusTransition({
+      currentStatus: phase.status,
+      nextStatus: status,
+    });
+
+    /**
+     * -------------------------------------------------------------------------
+     * Get all sections belonging to this phase.
+     * -------------------------------------------------------------------------
+     */
+
+    const phaseSections =
+      applicationDefinitionService.getSections(phaseId) ?? [];
+
+    const sectionIds = phaseSections.map((section) => section.id);
+
+    /**
+     * -------------------------------------------------------------------------
+     * When moving a phase to in_progress, synchronize section records.
+     *
+     * This ensures every section currently defined for the phase exists
+     * for the applicant.
+     * -------------------------------------------------------------------------
+     */
+
+    if (status === "in_progress" && sectionIds.length > 0) {
+      const existingSections =
+        await recruitmentPhaseRepository.findApplicationSections({
+          applicationId,
+          sectionIds,
+          transaction,
+        });
+
+      /**
+       * Create a lookup of existing section IDs.
+       */
+
+      const existingSectionIds = new Set(
+        existingSections.map((section) => section.section_id),
+      );
+
+      /**
+       * Find sections in the definition that do not yet have an
+       * applicant-specific progress record.
+       */
+
+      const missingSections = phaseSections.filter(
+        (section) => !existingSectionIds.has(section.id),
+      );
+
+      /**
+       * Create missing section records.
+       */
+
+      if (missingSections.length > 0) {
+        await recruitmentPhaseRepository.createApplicationSections({
+          sections: missingSections.map((section) => ({
+            application_id: applicationId,
+
+            section_id: section.id,
+
+            status: "in_progress",
+
+            recruiter_comment: null,
+
+            submitted_at: null,
+
+            approved_at: null,
+          })),
+
+          transaction,
+        });
+      }
+    }
+
+    /**
+     * -------------------------------------------------------------------------
+     * Resolve phase timestamps.
+     * -------------------------------------------------------------------------
+     */
+
+    let startedAt = phase.started_at;
+    let completedAt = phase.completed_at;
+
+    if (status === "in_progress") {
+      /**
+       * Preserve the original start date if one exists.
+       *
+       * If the phase has never been started, set it now.
+       */
+
+      startedAt = phase.started_at ?? new Date();
+
+      /**
+       * Reopening a phase means it is no longer completed.
+       */
+
+      completedAt = null;
+    }
+
+    if (status === "approved") {
+      completedAt = new Date();
+    }
+
+    if (status === "locked") {
+      startedAt = null;
+      completedAt = null;
+    }
+
+    /**
+     * -------------------------------------------------------------------------
+     * Update phase status.
+     * -------------------------------------------------------------------------
+     */
+
+    const updated =
+      await recruitmentPhaseRepository.updateApplicationPhaseStatus({
+        applicationId,
+        phaseId,
+        status,
+        startedAt,
+        completedAt,
+        transaction,
+      });
+
+    if (!updated) {
+      throw new Error("Failed to update application phase status.");
+    }
+
+    /**
+     * -------------------------------------------------------------------------
+     * Synchronize all existing sections belonging to this phase.
+     *
+     * Missing sections have already been created above when required.
+     * -------------------------------------------------------------------------
+     */
+
+    await recruitmentPhaseRepository.updatePhaseSectionsStatus({
+      applicationId,
+      sectionIds,
+      status,
+      transaction,
+    });
+
+    /**
+     * -------------------------------------------------------------------------
+     * Retrieve final database state.
+     * -------------------------------------------------------------------------
+     */
+
+    const updatedPhase = await recruitmentPhaseRepository.findApplicationPhase({
+      applicationId,
+      phaseId,
+      transaction,
+    });
+
+    if (!updatedPhase) {
+      throw new Error("Failed to retrieve updated application phase.");
+    }
+
+    /**
+     * -------------------------------------------------------------------------
+     * Return API contract.
+     * -------------------------------------------------------------------------
+     */
+
+    return {
+      id: updatedPhase.phase_id,
+
+      status: updatedPhase.status,
+
+      startedAt: updatedPhase.started_at
+        ? updatedPhase.started_at.toISOString()
+        : null,
+
+      completedAt: updatedPhase.completed_at
+        ? updatedPhase.completed_at.toISOString()
+        : null,
+    };
+  });
+};
 export {
   getRecruitmentDefaultData,
   getRecruitmentApplicants,
@@ -1015,4 +1280,5 @@ export {
   createSectionReviewComment,
   updateSectionReviewComment,
   deleteSectionReviewComment,
+  updateApplicationPhaseStatus,
 };

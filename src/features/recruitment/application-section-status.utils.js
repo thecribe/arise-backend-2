@@ -35,3 +35,36 @@ export const canManagerUpdateSectionStatus = (currentStatus, nextStatus) => {
 
   return transitions[currentStatus]?.includes(nextStatus) ?? false;
 };
+
+const PHASE_STATUS_TRANSITIONS = {
+  locked: ["in_progress"],
+
+  in_progress: ["locked", "approved"],
+
+  approved: ["in_progress"],
+};
+/**
+ * -----------------------------------------------------------------------------
+ * Validate phase status transition.
+ * -----------------------------------------------------------------------------
+ */
+
+export const validatePhaseStatusTransition = ({
+  currentStatus,
+  nextStatus,
+}) => {
+  /**
+   * Prevent unnecessary updates.
+   */
+  if (currentStatus === nextStatus) {
+    return;
+  }
+
+  const allowedTransitions = PHASE_STATUS_TRANSITIONS[currentStatus] ?? [];
+
+  if (!allowedTransitions.includes(nextStatus)) {
+    throw new Error(
+      `Cannot change phase status from "${currentStatus}" to "${nextStatus}".`,
+    );
+  }
+};

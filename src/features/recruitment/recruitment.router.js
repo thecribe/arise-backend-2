@@ -18,6 +18,7 @@ import {
   createSectionReviewCommentController,
   updateSectionReviewCommentController,
   deleteSectionReviewCommentController,
+  updateApplicationPhaseStatusController,
 } from "./recruitment.controller.js";
 import { authenticate } from "../../common/middleware/authenticate.js";
 import { PERMISSIONS } from "../../common/constants/permissions.js";
@@ -197,3 +198,54 @@ recruitmentRouter.delete(
 );
 
 export { recruitmentRouter };
+
+/**
+ * -----------------------------------------------------------------------------
+ * Update application phase status.
+ *
+ * Recruitment Managers control:
+ *
+ * - locking a phase
+ * - starting/reopening a phase
+ * - approving a phase
+ *
+ * When a phase becomes in_progress:
+ *
+ * - Missing section records are created.
+ * - All sections in the phase become in_progress.
+ *
+ * When a phase becomes approved:
+ *
+ * - All sections in the phase become approved.
+ *
+ * Requires:
+ *
+ * - RECRUITMENT_VIEW
+ * - RECRUITMENT_APPROVE
+ * -----------------------------------------------------------------------------
+ */
+
+recruitmentRouter.patch(
+  "/applications/:applicationId/phases/:phaseId/status",
+
+  authenticate,
+
+  authorize(
+    PERMISSIONS.RECRUITMENT_VIEW.name,
+    PERMISSIONS.RECRUITMENT_APPROVE.name,
+  ),
+
+  updateApplicationPhaseStatusController,
+);
+recruitmentRouter.put(
+  "/applications/:applicationId/section/:sectionId/submit",
+
+  authenticate,
+
+  authorize(
+    PERMISSIONS.RECRUITMENT_VIEW.name,
+    PERMISSIONS.RECRUITMENT_APPROVE.name,
+  ),
+
+  updateApplicationPhaseStatusController,
+);

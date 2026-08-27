@@ -51,6 +51,9 @@ router.post(
   "/sections/:sectionId/submit",
   authenticate,
   authorize(PERMISSIONS.APPLICATION_SUBMIT.name),
+  loadUploadUser,
+  createUpload("applications").any(),
+  applicationParseFormdata,
   applicantApplicationController.submitSection,
 );
 

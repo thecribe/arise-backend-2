@@ -398,6 +398,12 @@ const saveSectionDraft = async (applicantId, sectionId, values) => {
       throw new Error("Application section definition not found.");
     }
 
+    // convert values to array for repeateable sections
+
+    if (section.repeatable && !Array.isArray(values)) {
+      values = Object.values(values).map((item) => JSON.parse(item));
+    }
+
     // -----------------------------------------------------------------------
     // Find applicant section progress
     // -----------------------------------------------------------------------
