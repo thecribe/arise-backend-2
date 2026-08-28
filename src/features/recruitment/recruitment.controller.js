@@ -22,6 +22,7 @@ import {
   updateSectionReviewComment,
   deleteSectionReviewComment,
   updateApplicationPhaseStatus,
+  updateApplicationData,
 } from "./recruitment.service.js";
 import {
   createSectionReviewCommentSchema,
@@ -29,6 +30,7 @@ import {
   updateApplicationSectionStatusSchema,
   updateSectionReviewCommentSchema,
 } from "./recruitment.validation.js";
+import * as applicantApplicationService from "../applicant-application/applicant-application.service.js";
 
 /**
  * -----------------------------------------------------------------------------
@@ -263,3 +265,21 @@ export async function updateApplicationPhaseStatusController(req, res) {
     "Application phase status updated successfully.",
   );
 }
+
+export const saveApplicationForm = async (req, res) => {
+  const applicantId = req.user.id;
+
+  const { sectionId } = req.params;
+
+  const sectionValues = await updateApplicationData(
+    applicantId,
+    sectionId,
+    req.body,
+  );
+
+  return ApiResponse.success(
+    res,
+    sectionValues,
+    "Application section draft saved successfully.",
+  );
+};

@@ -19,10 +19,14 @@ import {
   updateSectionReviewCommentController,
   deleteSectionReviewCommentController,
   updateApplicationPhaseStatusController,
+  saveApplicationForm,
 } from "./recruitment.controller.js";
 import { authenticate } from "../../common/middleware/authenticate.js";
 import { PERMISSIONS } from "../../common/constants/permissions.js";
 import { authorize } from "../../common/middleware/authorize.js";
+import { loadUploadUser } from "../../common/middleware/load-applicant.js";
+import createUpload from "../../common/middleware/createUpload.js";
+import { applicationParseFormdata } from "../../common/middleware/applicationParseFormData.js";
 
 const recruitmentRouter = Router();
 
@@ -237,8 +241,9 @@ recruitmentRouter.patch(
 
   updateApplicationPhaseStatusController,
 );
+
 recruitmentRouter.put(
-  "/applications/:applicationId/section/:sectionId/submit",
+  "/applications/:applicationId/sections/:sectionId/submit",
 
   authenticate,
 
@@ -246,6 +251,9 @@ recruitmentRouter.put(
     PERMISSIONS.RECRUITMENT_VIEW.name,
     PERMISSIONS.RECRUITMENT_APPROVE.name,
   ),
+  loadUploadUser,
+  createUpload("applications").any(),
+  applicationParseFormdata,
 
-  updateApplicationPhaseStatusController,
+  saveApplicationForm,
 );

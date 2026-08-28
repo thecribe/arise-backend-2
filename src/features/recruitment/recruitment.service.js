@@ -16,6 +16,7 @@ import {
 } from "./application-section-status.utils.js";
 import { recruitmentPhaseRepository } from "./recruitment-phase.repository.js";
 import { sequelize } from "../../config/database.js";
+import * as applicantApplicationRepository from "../applicant-application/applicant-application.repository.js";
 
 /**
  * -----------------------------------------------------------------------------
@@ -1271,6 +1272,155 @@ const updateApplicationPhaseStatus = async ({
     };
   });
 };
+
+const updateApplicationData = async (applicantId, sectionId, values) => {
+  return sequelize.transaction(async (transaction) => {
+    // -----------------------------------------------------------------------
+    // Find applicant application
+    // -----------------------------------------------------------------------
+
+    const application =
+      await applicantApplicationRepository.findApplicationByApplicantId(
+        applicantId,
+        {
+          transaction,
+        },
+      );
+
+    if (!application) {
+      throw new Error("Applicant application not found.");
+    }
+
+    // -----------------------------------------------------------------------
+    // Find section definition
+    // -----------------------------------------------------------------------
+
+    const section = applicationDefinitionService.getSection(sectionId);
+
+    if (!section) {
+      throw new Error("Application section definition not found.");
+    }
+
+    // convert values to array for repeateable sections
+
+    if (section.repeatable && !Array.isArray(values)) {
+      values = Object.values(values).map((item) => JSON.parse(item));
+    }
+
+    // -----------------------------------------------------------------------
+    // Find applicant section progress
+    // -----------------------------------------------------------------------
+
+    const sectionProgress =
+      await applicantApplicationRepository.findApplicationSection(
+        application.id,
+        sectionId,
+        {
+          transaction,
+        },
+      );
+
+    if (!sectionProgress) {
+      throw new Error("Application section not found.");
+    }
+
+    // -----------------------------------------------------------------------
+    // Check section status
+    // -----------------------------------------------------------------------
+
+    // if (sectionProgress.status === "locked") {
+    //   throw new Error("This application section is locked.");
+    // }
+
+    // if (sectionProgress.status === "submitted") {
+    //   throw new Error("This application section has already been submitted.");
+    // }
+
+    // if (sectionProgress.status === "approved") {
+    //   throw new Error("This application section has already been approved.");
+    // }
+    // -----------------------------------------------------------------------
+    // Validate repeatable section structure.
+    // -----------------------------------------------------------------------
+
+    if (section.repeatable && !Array.isArray(values)) {
+      throw new Error("Repeatable section values must be an array.");
+    }
+
+    // -----------------------------------------------------------------------
+    // Validate non-repeatable section structure.
+    // -----------------------------------------------------------------------
+
+    if (
+      !section.repeatable &&
+      (values === null || Array.isArray(values) || typeof values !== "object")
+    ) {
+      throw new Error("Non-repeatable section values must be an object.");
+    }
+
+    // -----------------------------------------------------------------------
+    // Find existing saved values.
+    // -----------------------------------------------------------------------
+
+    const existingValues =
+      await applicantApplicationRepository.findSectionValues(
+        application.id,
+        sectionId,
+        {
+          transaction,
+        },
+      );
+
+    // -----------------------------------------------------------------------
+    // Convert values to JSON string.
+    //
+    // The database stores this as a string because of the
+    // MySQL JSON/default-value compatibility issue.
+    // -----------------------------------------------------------------------
+
+    const serializedValues = JSON.stringify(values);
+
+    // -----------------------------------------------------------------------
+    // Create or update.
+    // -----------------------------------------------------------------------
+
+    if (!existingValues) {
+      await applicantApplicationRepository.createSectionValues(
+        {
+          application_id: application.id,
+          section_id: sectionId,
+          values: serializedValues,
+        },
+        {
+          transaction,
+        },
+      );
+    } else {
+      await applicantApplicationRepository.updateSectionValues(
+        existingValues,
+        {
+          values: serializedValues,
+        },
+        {
+          transaction,
+        },
+      );
+    }
+
+    // -----------------------------------------------------------------------
+    // Return the same structure expected by the frontend.
+    //
+    // Saving a draft does NOT change the section status.
+    // -----------------------------------------------------------------------
+
+    return {
+      sectionId,
+      applicantId,
+      status: sectionProgress.status,
+      values,
+    };
+  });
+};
 export {
   getRecruitmentDefaultData,
   getRecruitmentApplicants,
@@ -1281,4 +1431,5 @@ export {
   updateSectionReviewComment,
   deleteSectionReviewComment,
   updateApplicationPhaseStatus,
+  updateApplicationData,
 };
