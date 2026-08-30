@@ -3,8 +3,11 @@ import { DataTypes } from "sequelize";
 export const up = async ({ context: queryInterface }) => {
   await queryInterface.createTable("application_status_history", {
     /**
+     * -------------------------------------------------------------------------
      * Unique identifier.
+     * -------------------------------------------------------------------------
      */
+
     id: {
       type: DataTypes.UUID,
       primaryKey: true,
@@ -12,8 +15,11 @@ export const up = async ({ context: queryInterface }) => {
     },
 
     /**
-     * Application whose status changed.
+     * -------------------------------------------------------------------------
+     * Application whose status/stage changed.
+     * -------------------------------------------------------------------------
      */
+
     application_id: {
       type: DataTypes.UUID,
       allowNull: false,
@@ -28,55 +34,99 @@ export const up = async ({ context: queryInterface }) => {
     },
 
     /**
-     * Status before the transition.
+     * -------------------------------------------------------------------------
+     * Previous application status.
      *
-     * Null when this is the application's first status record.
+     * Null when this is the first status history record.
+     * -------------------------------------------------------------------------
      */
+
     previous_status: {
       type: DataTypes.STRING(30),
       allowNull: true,
     },
 
     /**
-     * New application status.
+     * -------------------------------------------------------------------------
+     * Current application status.
+     * -------------------------------------------------------------------------
      */
+
     status: {
       type: DataTypes.STRING(30),
       allowNull: false,
     },
 
     /**
-     * Optional reason for the status transition.
+     * -------------------------------------------------------------------------
+     * Previous application stage.
+     *
+     * Null when this is the first application history record.
+     * -------------------------------------------------------------------------
      */
+
+    previous_stage: {
+      type: DataTypes.STRING(30),
+      allowNull: true,
+    },
+
+    /**
+     * -------------------------------------------------------------------------
+     * Current application stage.
+     *
+     * Examples:
+     *
+     * - APPLICATION_FORM
+     * - INTERVIEW
+     * - COMPLIANCE
+     * -------------------------------------------------------------------------
+     */
+
+    stage: {
+      type: DataTypes.STRING(30),
+      allowNull: false,
+    },
+
+    /**
+     * -------------------------------------------------------------------------
+     * Optional reason for the transition.
+     *
+     * Useful when:
+     *
+     * - rejecting an application
+     * - moving an applicant backwards
+     * - adding an explanation to a decision
+     * -------------------------------------------------------------------------
+     */
+
     reason: {
       type: DataTypes.TEXT,
       allowNull: true,
     },
 
     /**
-     * User responsible for the status change.
-     *
-     * We intentionally don't add a foreign key here yet because
-     * the exact user table/relationship should remain consistent
-     * with the existing project design.
+     * -------------------------------------------------------------------------
+     * User responsible for the change.
+     * -------------------------------------------------------------------------
      */
+
     changed_by: {
       type: DataTypes.UUID,
       allowNull: true,
     },
 
     /**
-     * Record creation timestamp.
+     * -------------------------------------------------------------------------
+     * Timestamps.
+     * -------------------------------------------------------------------------
      */
+
     created_at: {
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
 
-    /**
-     * Record update timestamp.
-     */
     updated_at: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -85,9 +135,11 @@ export const up = async ({ context: queryInterface }) => {
   });
 
   /**
-   * Index application_id because the most common operation will be
-   * retrieving the status history for a specific application.
+   * ---------------------------------------------------------------------------
+   * Retrieve history for an application.
+   * ---------------------------------------------------------------------------
    */
+
   await queryInterface.addIndex(
     "application_status_history",
     ["application_id"],
@@ -97,18 +149,36 @@ export const up = async ({ context: queryInterface }) => {
   );
 
   /**
-   * Index status because Recruitment will frequently query the
-   * latest status when filtering applicants.
+   * ---------------------------------------------------------------------------
+   * Filter applications by status.
+   * ---------------------------------------------------------------------------
    */
+
   await queryInterface.addIndex("application_status_history", ["status"], {
     name: "idx_application_status_history_status",
   });
 
   /**
-   * Index application_id + created_at because determining the
-   * current status requires finding the latest status record
-   * for an application.
+   * ---------------------------------------------------------------------------
+   * Filter applications by stage.
+   * ---------------------------------------------------------------------------
    */
+
+  await queryInterface.addIndex("application_status_history", ["stage"], {
+    name: "idx_application_status_history_stage",
+  });
+
+  /**
+   * ---------------------------------------------------------------------------
+   * Quickly determine the latest application state.
+   *
+   * The latest record for an application represents its current:
+   *
+   * - status
+   * - stage
+   * ---------------------------------------------------------------------------
+   */
+
   await queryInterface.addIndex(
     "application_status_history",
     ["application_id", "created_at"],

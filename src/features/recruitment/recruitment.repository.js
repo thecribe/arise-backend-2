@@ -383,6 +383,10 @@ const findApplicantApplicationById = async (applicantId) => {
           },
         ],
       },
+      {
+        model: ApplicationStatusHistory,
+        as: "statusHistory",
+      },
     ],
   });
 };

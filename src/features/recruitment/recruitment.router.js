@@ -27,6 +27,9 @@ import { authorize } from "../../common/middleware/authorize.js";
 import { loadUploadUser } from "../../common/middleware/load-applicant.js";
 import createUpload from "../../common/middleware/createUpload.js";
 import { applicationParseFormdata } from "../../common/middleware/applicationParseFormData.js";
+import { validate } from "../../common/middleware/validate.js";
+import { updateApplicationStatusSchema } from "./application-status.schema.js";
+import { applicationStatusController } from "./application-status.controller.js";
 
 const recruitmentRouter = Router();
 
@@ -256,4 +259,24 @@ recruitmentRouter.put(
   applicationParseFormdata,
 
   saveApplicationForm,
+);
+
+recruitmentRouter.patch(
+  "/applications/:applicationId/status",
+
+  authenticate,
+
+  authorize(
+    PERMISSIONS.RECRUITMENT_VIEW.name,
+    PERMISSIONS.RECRUITMENT_APPROVE.name,
+  ),
+  validate(updateApplicationStatusSchema),
+
+  applicationStatusController.updateApplicationStatusController,
+);
+
+recruitmentRouter.get(
+  "/application-status/me",
+  authenticate,
+  applicationStatusController.getApplicantApplicationStatus,
 );

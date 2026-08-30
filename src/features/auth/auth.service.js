@@ -12,12 +12,15 @@ import { passwordService } from "../../common/services/password.service.js";
 import { jwtService } from "../../common/services/jwt.service.js";
 import { userMapper } from "./mappers/user.mapper.js";
 import { SESSION_DURATION } from "../../common/constants/auth.js";
+import { ForbiddenError } from "../../common/errors/forbidden-error.js";
+import { UnauthorizedError } from "../../common/errors/unauthorized-error.js";
+import { NotFoundError } from "../../common/errors/not-found-error.js";
 
 const register = async (payload) => {
   const existingUser = await authRepository.findUserByEmail(payload.email);
 
   if (existingUser) {
-    throw new Error("Email address already exists.");
+    throw new ForbiddenError("Email address already exists.");
   }
 
   const transaction = await sequelize.transaction();
@@ -27,11 +30,11 @@ const register = async (payload) => {
     const defaultJobType = await authRepository.findDefaultJobType();
 
     if (!applicantRole) {
-      throw new Error("Applicant role not found.");
+      throw new NotFoundError("Applicant role not found.");
     }
 
     if (!defaultJobType) {
-      throw new Error("Default job type not found.");
+      throw new NotFoundError("Default job type not found.");
     }
 
     /**
@@ -118,7 +121,7 @@ const verifyEmail = async (token) => {
   });
 
   if (!verificationToken) {
-    throw new Error("Invalid or expired verification link.");
+    throw new UnauthorizedError("Invalid or expired verification link.");
   }
 
   const transaction = await sequelize.transaction();
@@ -153,16 +156,16 @@ const forgotPassword = async (email) => {
   const user = await authRepository.findUserByEmail(email);
 
   if (!user) {
-    throw new Error("User with this email does not exist.");
+    throw new ForbiddenError("User with this email does not exist.");
   }
-  
+
   const resetPasswordToken = tokenService.generate();
 
-    const tokenHash = tokenService.hash(resetPasswordToken);
+  const tokenHash = tokenService.hash(resetPasswordToken);
 
   const transaction = await sequelize.transaction();
 
-try {
+  try {
     await authRepository.createToken(
       {
         user_id: user.id,
@@ -183,11 +186,11 @@ try {
           token: resetPasswordToken,
         },
       },
-      transaction
+      transaction,
     );
 
     await transaction.commit();
-     return {
+    return {
       user,
       resetPasswordToken,
     };
@@ -207,7 +210,7 @@ const setPassword = async ({ token, password }) => {
   });
 
   if (!setPasswordToken) {
-    throw new Error("Invalid or expired link.");
+    throw new UnauthorizedError("Invalid or expired link.");
   }
 
   const transaction = await sequelize.transaction();
@@ -221,6 +224,9 @@ const setPassword = async ({ token, password }) => {
       transaction,
     );
 
+    if (!setPasswordToken.user.is_email_verified) {
+      await authRepository.verifyUserEmail(setPasswordToken.user, transaction);
+    }
     await authRepository.markTokenAsUsed(setPasswordToken, transaction);
 
     await transaction.commit();
@@ -235,15 +241,15 @@ const login = async ({ email, password }, request) => {
   const user = await authRepository.findUserByEmail(email);
 
   if (!user) {
-    throw new Error("Invalid email or password.");
+    throw new ForbiddenError("Invalid email or password.");
   }
 
   if (!user.is_email_verified) {
-    throw new Error("Please verify your email address.");
+    throw new ForbiddenError("Please verify your email address.");
   }
 
   if (!user.password) {
-    throw new Error("Please complete your account setup.");
+    throw new ForbiddenError("Please complete your account setup.");
   }
 
   const passwordMatches = await passwordService.compare(
@@ -252,7 +258,7 @@ const login = async ({ email, password }, request) => {
   );
 
   if (!passwordMatches) {
-    throw new Error("Invalid email or password.");
+    throw new UnauthorizedError("Invalid email or password.");
   }
 
   const transaction = await sequelize.transaction();
@@ -283,7 +289,6 @@ const login = async ({ email, password }, request) => {
       sessionId: session.id,
     });
 
-    console.log({accessToken, refreshToken});
     await authRepository.updateSession(
       session,
       {

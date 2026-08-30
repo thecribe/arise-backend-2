@@ -1,34 +1,24 @@
 import { dashboardRepository } from "./dashboard.repository.js";
 import applicationDefinitionService from "../../application-definition/service.js";
+import { NotFoundError } from "../../common/errors/not-found-error.js";
 
 const getApplicantDashboard = async (applicantId) => {
   const application =
-    await dashboardRepository.findApplicationByApplicantId(
-      applicantId,
-    );
+    await dashboardRepository.findApplicationByApplicantId(applicantId);
 
   if (!application) {
-    throw new Error(
-      "Applicant application not found.",
-    );
+    throw new NotFoundError("Applicant application not found.");
   }
 
-  const [applicantPhases, applicantSections] =
-    await Promise.all([
-      dashboardRepository.findApplicationPhases(
-        application.id,
-      ),
+  const [applicantPhases, applicantSections] = await Promise.all([
+    dashboardRepository.findApplicationPhases(application.id),
 
-      dashboardRepository.findApplicationSections(
-        application.id,
-        {
-          order: [["updated_at", "DESC"]],
-        },
-      ),
-    ]);
+    dashboardRepository.findApplicationSections(application.id, {
+      order: [["updated_at", "DESC"]],
+    }),
+  ]);
 
-  const phaseDefinitions =
-    applicationDefinitionService.getPhases();
+  const phaseDefinitions = applicationDefinitionService.getPhases();
 
   const phases = phaseDefinitions.map((phase) => {
     const applicantPhase = applicantPhases.find(
@@ -47,16 +37,11 @@ const getApplicantDashboard = async (applicantId) => {
   });
 
   const currentPhase =
-    phases.find(
-      (phase) =>
-        phase.id === application.current_phase_id,
-    ) ?? null;
+    phases.find((phase) => phase.id === application.current_phase_id) ?? null;
 
-  const latestFeedback =
-    applicantSections.find(
-      (section) =>
-        section.recruiter_comment?.trim(),
-    );
+  const latestFeedback = applicantSections.find((section) =>
+    section.recruiter_comment?.trim(),
+  );
 
   return {
     overallProgress: application.progress,
@@ -72,6 +57,4 @@ const getApplicantDashboard = async (applicantId) => {
   };
 };
 
-export {
-  getApplicantDashboard,
-};
+export { getApplicantDashboard };

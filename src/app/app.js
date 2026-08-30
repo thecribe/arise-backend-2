@@ -9,7 +9,7 @@ import path from "path";
 import { apiV1Router } from "../api/v1/index.js";
 
 import { env } from "../config/env.js";
-import { ApiResponse } from "../common/responses/api-response.js";
+import { errorHandler } from "../common/middleware/error-handler.js";
 
 const allowedOrigins = env.APP_URL.split(",").map((origin) => origin.trim());
 const app = express();
@@ -77,10 +77,11 @@ app.use("/api/v1", apiV1Router);
 
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
-app.use((err, req, res, next) => {
-  console.error(err);
-
-  return ApiResponse.error(res, 500, err.message || "Internal Server Error");
-});
+/**
+ * Global error handler.
+ *
+ * Must be registered after routes and other middleware.
+ */
+app.use(errorHandler);
 
 export { app };

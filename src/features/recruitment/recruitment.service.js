@@ -17,6 +17,11 @@ import {
 import { recruitmentPhaseRepository } from "./recruitment-phase.repository.js";
 import { sequelize } from "../../config/database.js";
 import * as applicantApplicationRepository from "../applicant-application/applicant-application.repository.js";
+import { NotFoundError } from "../../common/errors/not-found-error.js";
+import { ConflictError } from "../../common/errors/conflict-error.js";
+import { ForbiddenError } from "../../common/errors/forbidden-error.js";
+import { UnauthorizedError } from "../../common/errors/unauthorized-error.js";
+import { BadRequestError } from "../../common/errors/bad-request-error.js";
 
 /**
  * -----------------------------------------------------------------------------
@@ -92,7 +97,7 @@ const getRecruitmentApplicants = async (filters) => {
     const phase = applicationDefinitionService.getPhase(filters.phaseId);
 
     if (!phase) {
-      throw new Error("Application phase not found.");
+      throw new NotFoundError("Application phase not found.");
     }
   }
 
@@ -114,7 +119,9 @@ const getRecruitmentApplicants = async (filters) => {
     const currentStatus = application.get("current_status");
 
     if (!currentStatus) {
-      throw new Error(`Application "${application.id}" has no status history.`);
+      throw new NotFoundError(
+        `Application "${application.id}" has no status history.`,
+      );
     }
 
     return {
@@ -197,7 +204,7 @@ const resolveCurrentPhase = (application) => {
   const phases = applicationDefinitionService.getPhases();
 
   if (!phases.length) {
-    throw new Error("Application definition has no phases.");
+    throw new NotFoundError("Application definition has no phases.");
   }
 
   // ---------------------------------------------------------------------------
@@ -283,7 +290,7 @@ const getRecruitmentApplicant = async (applicantId) => {
   // ---------------------------------------------------------------------------
 
   if (!application) {
-    throw new Error("Applicant application not found.");
+    throw new NotFoundError("Applicant application not found.");
   }
 
   // ---------------------------------------------------------------------------
@@ -481,6 +488,7 @@ const getRecruitmentApplicant = async (applicantId) => {
      * Current overall application status.
      */
     status: currentStatus,
+    application_status: application.statusHistory[0],
 
     /**
      * Latest status transition.
@@ -573,7 +581,7 @@ const getRecruitmentApplicantSection = async (applicationId, sectionId) => {
   const sectionDefinition = applicationDefinitionService.getSection(sectionId);
 
   if (!sectionDefinition) {
-    throw new Error("Application section definition not found.");
+    throw new NotFoundError("Application section definition not found.");
   }
 
   /**
@@ -587,7 +595,7 @@ const getRecruitmentApplicantSection = async (applicationId, sectionId) => {
   );
 
   if (!result) {
-    throw new Error("Application section not found.");
+    throw new NotFoundError("Application section not found.");
   }
 
   const { section, sectionValues, comments } = result;
@@ -623,7 +631,7 @@ const getRecruitmentApplicantSection = async (applicationId, sectionId) => {
     try {
       values = JSON.parse(sectionValues.values);
     } catch {
-      throw new Error("Invalid section values stored in database.");
+      throw new ConflictError("Invalid section values stored in database.");
     }
 
     /**
@@ -641,7 +649,7 @@ const getRecruitmentApplicantSection = async (applicationId, sectionId) => {
      * -------------------------------------------------------------------------
      */
     if (sectionDefinition.repeatable && !Array.isArray(values)) {
-      throw new Error("Invalid repeatable section values.");
+      throw new ConflictError("Invalid repeatable section values.");
     }
 
     /**
@@ -653,7 +661,7 @@ const getRecruitmentApplicantSection = async (applicationId, sectionId) => {
       !sectionDefinition.repeatable &&
       (Array.isArray(values) || typeof values !== "object")
     ) {
-      throw new Error("Invalid non-repeatable section values.");
+      throw new ConflictError("Invalid non-repeatable section values.");
     }
   }
 
@@ -739,7 +747,7 @@ const updateApplicationSectionStatus = async ({
       });
 
     if (!applicationSection) {
-      throw new Error("Application section not found.");
+      throw new NotFoundError("Application section not found.");
     }
 
     /**
@@ -754,7 +762,7 @@ const updateApplicationSectionStatus = async ({
     );
 
     if (!canUpdate) {
-      throw new Error(
+      throw new ConflictError(
         `Cannot change section status from "${applicationSection.status}" to "${status}".`,
       );
     }
@@ -781,7 +789,9 @@ const updateApplicationSectionStatus = async ({
      */
     if (status === "rejected") {
       if (!comment?.trim()) {
-        throw new Error("A comment is required when rejecting a section.");
+        throw new ForbiddenError(
+          "A comment is required when rejecting a section.",
+        );
       }
 
       await recruitmentRepository.createSectionReviewComment({
@@ -830,7 +840,7 @@ const createSectionReviewComment = async ({
   });
 
   if (!section) {
-    throw new Error("Application section not found.");
+    throw new NotFoundError("Application section not found.");
   }
 
   /**
@@ -858,7 +868,7 @@ const createSectionReviewComment = async ({
     await recruitmentRepository.findSectionReviewCommentById(createdComment.id);
 
   if (!commentWithCreator) {
-    throw new Error("Review comment could not be retrieved.");
+    throw new ForbiddenError("Review comment could not be retrieved.");
   }
 
   return mapSectionReviewComment(commentWithCreator);
@@ -886,7 +896,7 @@ const updateSectionReviewComment = async ({
     await recruitmentRepository.findSectionReviewCommentById(commentId);
 
   if (!existingComment) {
-    throw new Error("Review comment not found.");
+    throw new NotFoundError("Review comment not found.");
   }
 
   /**
@@ -896,7 +906,9 @@ const updateSectionReviewComment = async ({
    */
 
   if (existingComment.application_id !== applicationId) {
-    throw new Error("Review comment does not belong to this application.");
+    throw new UnauthorizedError(
+      "Review comment does not belong to this application.",
+    );
   }
 
   /**
@@ -906,7 +918,7 @@ const updateSectionReviewComment = async ({
    */
 
   if (existingComment.section_id !== sectionId) {
-    throw new Error(
+    throw new UnauthorizedError(
       "Review comment does not belong to this application section.",
     );
   }
@@ -918,7 +930,9 @@ const updateSectionReviewComment = async ({
    */
 
   if (existingComment.created_by !== managerId) {
-    throw new Error("You are not allowed to edit this review comment.");
+    throw new UnauthorizedError(
+      "You are not allowed to edit this review comment.",
+    );
   }
 
   /**
@@ -941,7 +955,7 @@ const updateSectionReviewComment = async ({
     await recruitmentRepository.findSectionReviewCommentById(commentId);
 
   if (!updatedComment) {
-    throw new Error("Updated review comment could not be retrieved.");
+    throw new BadRequestError("Updated review comment could not be retrieved.");
   }
 
   return mapSectionReviewComment(updatedComment);
@@ -968,7 +982,7 @@ const deleteSectionReviewComment = async ({
     await recruitmentRepository.findSectionReviewCommentById(commentId);
 
   if (!existingComment) {
-    throw new Error("Review comment not found.");
+    throw new NotFoundError("Review comment not found.");
   }
 
   /**
@@ -978,7 +992,9 @@ const deleteSectionReviewComment = async ({
    */
 
   if (existingComment.application_id !== applicationId) {
-    throw new Error("Review comment does not belong to this application.");
+    throw new ForbiddenError(
+      "Review comment does not belong to this application.",
+    );
   }
 
   /**
@@ -988,7 +1004,7 @@ const deleteSectionReviewComment = async ({
    */
 
   if (existingComment.section_id !== sectionId) {
-    throw new Error(
+    throw new ForbiddenError(
       "Review comment does not belong to this application section.",
     );
   }
@@ -1000,7 +1016,9 @@ const deleteSectionReviewComment = async ({
    */
 
   if (existingComment.created_by !== managerId) {
-    throw new Error("You are not allowed to delete this review comment.");
+    throw new UnauthorizedError(
+      "You are not allowed to delete this review comment.",
+    );
   }
 
   /**
@@ -1054,7 +1072,7 @@ const updateApplicationPhaseStatus = async ({
     );
 
     if (!application) {
-      throw new Error("Applicant application not found.");
+      throw new NotFoundError("Applicant application not found.");
     }
 
     /**
@@ -1066,7 +1084,7 @@ const updateApplicationPhaseStatus = async ({
     const phaseDefinition = applicationDefinitionService.getPhase(phaseId);
 
     if (!phaseDefinition) {
-      throw new Error("Application phase definition not found.");
+      throw new NotFoundError("Application phase definition not found.");
     }
 
     /**
@@ -1082,7 +1100,7 @@ const updateApplicationPhaseStatus = async ({
     });
 
     if (!phase) {
-      throw new Error("Applicant application phase not found.");
+      throw new NotFoundError("Applicant application phase not found.");
     }
 
     /**
@@ -1217,7 +1235,7 @@ const updateApplicationPhaseStatus = async ({
       });
 
     if (!updated) {
-      throw new Error("Failed to update application phase status.");
+      throw new ConflictError("Failed to update application phase status.");
     }
 
     /**
@@ -1248,7 +1266,7 @@ const updateApplicationPhaseStatus = async ({
     });
 
     if (!updatedPhase) {
-      throw new Error("Failed to retrieve updated application phase.");
+      throw new ConflictError("Failed to retrieve updated application phase.");
     }
 
     /**
@@ -1288,7 +1306,7 @@ const updateApplicationData = async (applicantId, sectionId, values) => {
       );
 
     if (!application) {
-      throw new Error("Applicant application not found.");
+      throw new NotFoundError("Applicant application not found.");
     }
 
     // -----------------------------------------------------------------------
@@ -1298,7 +1316,7 @@ const updateApplicationData = async (applicantId, sectionId, values) => {
     const section = applicationDefinitionService.getSection(sectionId);
 
     if (!section) {
-      throw new Error("Application section definition not found.");
+      throw new NotFoundError("Application section definition not found.");
     }
 
     // convert values to array for repeateable sections
@@ -1321,7 +1339,7 @@ const updateApplicationData = async (applicantId, sectionId, values) => {
       );
 
     if (!sectionProgress) {
-      throw new Error("Application section not found.");
+      throw new NotFoundError("Application section not found.");
     }
 
     // -----------------------------------------------------------------------
@@ -1329,22 +1347,22 @@ const updateApplicationData = async (applicantId, sectionId, values) => {
     // -----------------------------------------------------------------------
 
     // if (sectionProgress.status === "locked") {
-    //   throw new Error("This application section is locked.");
+    //   throw new ConflictError("This application section is locked.");
     // }
 
     // if (sectionProgress.status === "submitted") {
-    //   throw new Error("This application section has already been submitted.");
+    //   throw new ConflictError("This application section has already been submitted.");
     // }
 
     // if (sectionProgress.status === "approved") {
-    //   throw new Error("This application section has already been approved.");
+    //   throw new ConflictError("This application section has already been approved.");
     // }
     // -----------------------------------------------------------------------
     // Validate repeatable section structure.
     // -----------------------------------------------------------------------
 
     if (section.repeatable && !Array.isArray(values)) {
-      throw new Error("Repeatable section values must be an array.");
+      throw new ConflictError("Repeatable section values must be an array.");
     }
 
     // -----------------------------------------------------------------------
@@ -1355,7 +1373,9 @@ const updateApplicationData = async (applicantId, sectionId, values) => {
       !section.repeatable &&
       (values === null || Array.isArray(values) || typeof values !== "object")
     ) {
-      throw new Error("Non-repeatable section values must be an object.");
+      throw new ConflictError(
+        "Non-repeatable section values must be an object.",
+      );
     }
 
     // -----------------------------------------------------------------------

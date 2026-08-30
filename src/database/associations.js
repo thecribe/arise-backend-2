@@ -119,7 +119,15 @@ const registerAssociations = () => {
     onDelete: "CASCADE",
     onUpdate: "CASCADE",
   });
+  ApplicationStatusHistory.belongsTo(User, {
+    foreignKey: "changed_by",
+    as: "changedByUser",
+  });
 
+  User.hasMany(ApplicationStatusHistory, {
+    foreignKey: "changed_by",
+    as: "applicationStatusChanges",
+  });
   ApplicationStatusHistory.belongsTo(ApplicantApplication, {
     foreignKey: "application_id",
     as: "application",

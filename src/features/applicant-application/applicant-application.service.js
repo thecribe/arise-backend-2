@@ -4,13 +4,18 @@ import * as applicantApplicationRepository from "./applicant-application.reposit
 import applicationDefinitionService from "../../application-definition/service.js";
 
 import { mapApplicantApplication } from "./mappers/applicant-application.mapper.js";
-import { APPLICATION_STATUS } from "../../application-definition/constants.js";
+import {
+  APPLICATION_STAGE,
+  APPLICATION_STATUS,
+} from "../../application-definition/constants.js";
+import { NotFoundError } from "../../common/errors/not-found-error.js";
+import { ConflictError } from "../../common/errors/conflict-error.js";
 
 const initializeApplication = async (applicantId, transaction) => {
   const phases = applicationDefinitionService.getPhases();
 
   if (!phases.length) {
-    throw new Error("Application definition has no phases.");
+    throw new NotFoundError("Application definition has no phases.");
   }
 
   const firstPhase = phases[0];
@@ -20,7 +25,9 @@ const initializeApplication = async (applicantId, transaction) => {
   );
 
   if (!firstPhaseSections.length) {
-    throw new Error(`Application phase "${firstPhase.id}" has no sections.`);
+    throw new NotFoundError(
+      `Application phase "${firstPhase.id}" has no sections.`,
+    );
   }
 
   const firstSection = firstPhaseSections[0];
@@ -50,6 +57,8 @@ const initializeApplication = async (applicantId, transaction) => {
       previous_status: null,
       status: APPLICATION_STATUS.IN_PROGRESS,
       changed_by: applicantId,
+      previous_stage: null,
+      stage: APPLICATION_STAGE.APPLICATION_FORM,
     },
     { transaction },
   );
@@ -301,7 +310,7 @@ const getSectionValues = async (applicantId, sectionId) => {
     );
 
   if (!application) {
-    throw new Error("Applicant application not found.");
+    throw new NotFoundError("Applicant application not found.");
   }
 
   // ---------------------------------------------------------------------------
@@ -311,7 +320,7 @@ const getSectionValues = async (applicantId, sectionId) => {
   const section = applicationDefinitionService.getSection(sectionId);
 
   if (!section) {
-    throw new Error("Application section definition not found.");
+    throw new NotFoundError("Application section definition not found.");
   }
 
   // ---------------------------------------------------------------------------
@@ -325,7 +334,7 @@ const getSectionValues = async (applicantId, sectionId) => {
     );
 
   if (!sectionProgress) {
-    throw new Error("Application section not found.");
+    throw new NotFoundError("Application section not found.");
   }
 
   // ---------------------------------------------------------------------------
@@ -359,7 +368,7 @@ const getSectionValues = async (applicantId, sectionId) => {
   try {
     values = JSON.parse(sectionValues.values);
   } catch {
-    throw new Error("Invalid section values stored in database.");
+    throw new ConflictError("Invalid section values stored in database.");
   }
 
   return {
@@ -385,7 +394,7 @@ const saveSectionDraft = async (applicantId, sectionId, values) => {
       );
 
     if (!application) {
-      throw new Error("Applicant application not found.");
+      throw new NotFoundError("Applicant application not found.");
     }
 
     // -----------------------------------------------------------------------
@@ -395,7 +404,7 @@ const saveSectionDraft = async (applicantId, sectionId, values) => {
     const section = applicationDefinitionService.getSection(sectionId);
 
     if (!section) {
-      throw new Error("Application section definition not found.");
+      throw new NotFoundError("Application section definition not found.");
     }
 
     // convert values to array for repeateable sections
@@ -418,7 +427,7 @@ const saveSectionDraft = async (applicantId, sectionId, values) => {
       );
 
     if (!sectionProgress) {
-      throw new Error("Application section not found.");
+      throw new NotFoundError("Application section not found.");
     }
 
     // -----------------------------------------------------------------------
@@ -426,22 +435,26 @@ const saveSectionDraft = async (applicantId, sectionId, values) => {
     // -----------------------------------------------------------------------
 
     if (sectionProgress.status === "locked") {
-      throw new Error("This application section is locked.");
+      throw new ConflictError("This application section is locked.");
     }
 
     if (sectionProgress.status === "submitted") {
-      throw new Error("This application section has already been submitted.");
+      throw new ConflictError(
+        "This application section has already been submitted.",
+      );
     }
 
     if (sectionProgress.status === "approved") {
-      throw new Error("This application section has already been approved.");
+      throw new ConflictError(
+        "This application section has already been approved.",
+      );
     }
     // -----------------------------------------------------------------------
     // Validate repeatable section structure.
     // -----------------------------------------------------------------------
 
     if (section.repeatable && !Array.isArray(values)) {
-      throw new Error("Repeatable section values must be an array.");
+      throw new ConflictError("Repeatable section values must be an array.");
     }
 
     // -----------------------------------------------------------------------
@@ -452,7 +465,9 @@ const saveSectionDraft = async (applicantId, sectionId, values) => {
       !section.repeatable &&
       (values === null || Array.isArray(values) || typeof values !== "object")
     ) {
-      throw new Error("Non-repeatable section values must be an object.");
+      throw new ConflictError(
+        "Non-repeatable section values must be an object.",
+      );
     }
 
     // -----------------------------------------------------------------------
@@ -533,7 +548,7 @@ const submitSection = async (applicantId, sectionId) => {
       );
 
     if (!application) {
-      throw new Error("Applicant application not found.");
+      throw new NotFoundError("Applicant application not found.");
     }
 
     // -----------------------------------------------------------------------
@@ -543,7 +558,7 @@ const submitSection = async (applicantId, sectionId) => {
     const section = applicationDefinitionService.getSection(sectionId);
 
     if (!section) {
-      throw new Error("Application section definition not found.");
+      throw new NotFoundError("Application section definition not found.");
     }
 
     // -----------------------------------------------------------------------
@@ -560,7 +575,7 @@ const submitSection = async (applicantId, sectionId) => {
       );
 
     if (!sectionProgress) {
-      throw new Error("Application section not found.");
+      throw new NotFoundError("Application section not found.");
     }
 
     // -----------------------------------------------------------------------
@@ -568,15 +583,19 @@ const submitSection = async (applicantId, sectionId) => {
     // -----------------------------------------------------------------------
 
     if (sectionProgress.status === "locked") {
-      throw new Error("This application section is locked.");
+      throw new NotFoundError("This application section is locked.");
     }
 
     if (sectionProgress.status === "submitted") {
-      throw new Error("This application section has already been submitted.");
+      throw new NotFoundError(
+        "This application section has already been submitted.",
+      );
     }
 
     if (sectionProgress.status === "approved") {
-      throw new Error("This application section has already been approved.");
+      throw new NotFoundError(
+        "This application section has already been approved.",
+      );
     }
 
     // -----------------------------------------------------------------------
@@ -593,7 +612,9 @@ const submitSection = async (applicantId, sectionId) => {
       );
 
     if (!sectionValues) {
-      throw new Error("Please save the application section before submitting.");
+      throw new ConflictError(
+        "Please save the application section before submitting.",
+      );
     }
 
     // -----------------------------------------------------------------------
@@ -605,11 +626,11 @@ const submitSection = async (applicantId, sectionId) => {
     try {
       values = JSON.parse(sectionValues.values);
     } catch {
-      throw new Error("Invalid section values stored in database.");
+      throw new ConflictError("Invalid section values stored in database.");
     }
 
     if (values === null || values === undefined) {
-      throw new Error("Application section has no values to submit.");
+      throw new ConflictError("Application section has no values to submit.");
     }
 
     // -----------------------------------------------------------------------
@@ -636,7 +657,7 @@ const submitSection = async (applicantId, sectionId) => {
     const phase = applicationDefinitionService.getPhase(section.phaseId);
 
     if (!phase) {
-      throw new Error("Application phase definition not found.");
+      throw new NotFoundError("Application phase definition not found.");
     }
 
     const phaseProgress =
@@ -649,7 +670,7 @@ const submitSection = async (applicantId, sectionId) => {
       );
 
     if (!phaseProgress) {
-      throw new Error("Application phase not found.");
+      throw new NotFoundError("Application phase not found.");
     }
 
     // -----------------------------------------------------------------------
@@ -749,7 +770,7 @@ const getApplicantSectionReviewComments = async (applicantId, sectionId) => {
       );
 
     if (!application) {
-      throw new Error("Applicant application not found.");
+      throw new NotFoundError("Applicant application not found.");
     }
 
     /**
