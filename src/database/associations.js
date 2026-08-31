@@ -1,3 +1,4 @@
+import { AuditLog } from "./models/AuditLog.js";
 import {
   JobType,
   Permission,
@@ -153,6 +154,25 @@ ApplicationSectionReviewComment.belongsTo(User, {
 User.hasMany(ApplicationSectionReviewComment, {
   foreignKey: "created_by",
   as: "applicationSectionReviewComments",
+});
+User.hasMany(AuditLog, {
+  foreignKey: "user_id",
+  as: "auditLogs",
+});
+
+AuditLog.belongsTo(User, {
+  foreignKey: "user_id",
+  as: "user",
+});
+
+ApplicantApplication.hasMany(AuditLog, {
+  foreignKey: "application_id",
+  as: "auditLogs",
+});
+
+AuditLog.belongsTo(ApplicantApplication, {
+  foreignKey: "application_id",
+  as: "application",
 });
 
 export { registerAssociations };

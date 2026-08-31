@@ -1,38 +1,10 @@
 /**
  * --------------------------------------------------------------------------
- * Sensitive fields
- *
- * These fields should never be written directly to application logs.
- * Matching is case-insensitive.
- * --------------------------------------------------------------------------
- */
-
-const SENSITIVE_FIELDS = [
-  "password",
-  "passwordConfirmation",
-  "currentPassword",
-  "newPassword",
-  "confirmPassword",
-
-  "token",
-  "accessToken",
-  "refreshToken",
-
-  "authorization",
-  "cookie",
-
-  "jwt",
-  "secret",
-
-  "apiKey",
-  "api_key",
-];
-
-/**
- * --------------------------------------------------------------------------
  * Determines whether a field should be redacted.
  * --------------------------------------------------------------------------
  */
+
+import { SENSITIVE_FIELDS } from "../constants/senstive-fields.js";
 
 const isSensitiveField = (key) => {
   const normalizedKey = key.toLowerCase();

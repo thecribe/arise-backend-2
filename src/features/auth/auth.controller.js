@@ -1,3 +1,5 @@
+import { createAuditContext } from "../../common/audit/audit-context.js";
+import { BadRequestError } from "../../common/errors/bad-request-error.js";
 import { ApiResponse } from "../../common/responses/api-response.js";
 import { asyncHandler } from "../../common/utils/async-handler.js";
 import { authCookie } from "../../common/utils/auth-cookie.js";
@@ -13,8 +15,9 @@ import {
 const register = asyncHandler(async (req, res) => {
   const payload = registerSchema.parse(req.body);
 
-   await authService.register(payload);
+  const auditContext = createAuditContext(req);
 
+  await authService.register(payload, auditContext);
 
   return ApiResponse.success(
     res,
@@ -27,12 +30,14 @@ const register = asyncHandler(async (req, res) => {
 const forgotPassword = asyncHandler(async (req, res) => {
   const payload = forgotPasswordSchema.parse(req.body);
 
-  await authService.forgotPassword(payload.email);
+  const auditContext = createAuditContext(req);
+
+  await authService.forgotPassword(payload.email, auditContext);
 
   return ApiResponse.success(
     res,
     null,
-    "If an account with that email exists, a password reset link has been sent."
+    "If an account with that email exists, a password reset link has been sent.",
   );
 });
 
@@ -40,21 +45,26 @@ const verifyEmail = asyncHandler(async (req, res) => {
   const token = req.query.token;
 
   if (!token) {
-    throw new Error("Verification token is required.");
+    throw new BadRequestError("Verification token is required.");
   }
 
-  const setPasswordToken = await authService.verifyEmail(token);
+  const auditContext = createAuditContext(req);
 
-  // return res.redirect(
-  //   `${env.APP_URL}/set-password?token=${setPasswordToken}`,
-  // );
-  return ApiResponse.success(res, {setPasswordToken}, "Email verified successfully.");
+  const setPasswordToken = await authService.verifyEmail(token, auditContext);
+
+  return ApiResponse.success(
+    res,
+    { setPasswordToken },
+    "Email verified successfully.",
+  );
 });
 
 const setPassword = asyncHandler(async (req, res) => {
   const payload = setPasswordSchema.parse(req.body);
 
-  await authService.setPassword(payload);
+  const auditContext = createAuditContext(req);
+
+  await authService.setPassword(payload, auditContext);
 
   return ApiResponse.success(res, null, "Password created successfully.");
 });
@@ -62,9 +72,11 @@ const setPassword = asyncHandler(async (req, res) => {
 const login = asyncHandler(async (req, res) => {
   const payload = loginSchema.parse(req.body);
 
+  const auditContext = createAuditContext(req);
+
   const { user, accessToken, refreshToken } = await authService.login(
     payload,
-    req,
+    auditContext,
   );
 
   authCookie.setAuthCookies(res, {
@@ -106,7 +118,9 @@ const me = asyncHandler(async (req, res) => {
 });
 
 const logout = asyncHandler(async (req, res) => {
-  await authService.logout(req.session);
+  const auditContext = createAuditContext(req);
+
+  await authService.logout(req.session, auditContext);
 
   authCookie.clearAuthCookies(res);
 
@@ -114,7 +128,9 @@ const logout = asyncHandler(async (req, res) => {
 });
 
 const logoutAll = asyncHandler(async (req, res) => {
-  await authService.logoutAll(req.user.id);
+  const auditContext = createAuditContext(req);
+
+  await authService.logoutAll(req.user.id, auditContext);
 
   authCookie.clearAuthCookies(res);
 

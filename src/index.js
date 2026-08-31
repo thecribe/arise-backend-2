@@ -3,7 +3,6 @@ import { startServer } from "./app/server.js";
 import { registerAssociations } from "./database/associations.js";
 import "./features/auth/jobs/index.js";
 import { startWorker } from "./infrastructure/jobs/job.worker.js";
-import { logger } from "./common/logger/logger.js";
 
 const bootstrap = async () => {
   try {

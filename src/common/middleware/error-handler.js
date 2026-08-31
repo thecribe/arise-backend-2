@@ -1,4 +1,9 @@
+import { env } from "../../config/env.js";
+
 import { AppError } from "../errors/index.js";
+
+import { logError } from "../logger/log-error.js";
+
 import { ApiResponse } from "../responses/api-response.js";
 
 /**
@@ -7,40 +12,35 @@ import { ApiResponse } from "../responses/api-response.js";
  *
  * Handles all errors that reach the Express error pipeline.
  *
- * Expected application errors should extend AppError.
+ * Responsibilities:
  *
- * Unexpected errors are treated as internal server errors and should not
- * expose implementation details in production.
+ * - Log errors centrally.
+ * - Handle expected application errors.
+ * - Handle unexpected system errors.
+ * - Prevent sensitive internal details from reaching the client in production.
  * --------------------------------------------------------------------------
  */
 
 export const errorHandler = (err, req, res, next) => {
   /**
-   * ------------------------------------------------------------------------
-   * Prevent attempting to send another response if Express has already sent
-   * response headers.
-   * ------------------------------------------------------------------------
+   * Prevent attempting to send another response if headers have already
+   * been sent.
    */
-
   if (res.headersSent) {
     return next(err);
   }
 
   /**
-   * ------------------------------------------------------------------------
-   * Operational / application errors
+   * Log every error centrally.
    *
-   * These are intentional errors thrown by the application, such as:
-   *
-   * - NotFoundError
-   * - ValidationError
-   * - UnauthorizedError
-   * - ForbiddenError
-   * - ConflictError
-   * - BadRequestError
-   * ------------------------------------------------------------------------
+   * Services and controllers should not need to manually log errors before
+   * throwing them.
    */
+  logError(err, req);
 
+  /**
+   * Operational / application errors.
+   */
   if (err instanceof AppError && err.isOperational) {
     return ApiResponse.error(res, err.statusCode, err.message, {
       code: err.code,
@@ -49,20 +49,14 @@ export const errorHandler = (err, req, res, next) => {
   }
 
   /**
-   * ------------------------------------------------------------------------
-   * Unexpected / system errors
+   * Unexpected / system errors.
    *
-   * These should not expose implementation details in production.
-   *
-   * We will add centralized file logging in STEP 4.
-   * ------------------------------------------------------------------------
+   * Do not expose internal implementation details in production.
    */
-
-  const isProduction = process.env.NODE_ENV === "production";
-
-  const message = isProduction
-    ? "Internal Server Error"
-    : err.message || "Internal Server Error";
+  const message =
+    env.NODE_ENV === "production"
+      ? "Internal Server Error"
+      : err.message || "Internal Server Error";
 
   return ApiResponse.error(res, 500, message, {
     code: "INTERNAL_SERVER_ERROR",

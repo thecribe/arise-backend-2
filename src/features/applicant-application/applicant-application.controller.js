@@ -1,3 +1,4 @@
+import { createAuditContext } from "../../common/audit/audit-context.js";
 import { ApiResponse } from "../../common/responses/api-response.js";
 import * as applicantApplicationService from "./applicant-application.service.js";
 
@@ -35,10 +36,13 @@ const saveSectionDraft = async (req, res) => {
 
   const { sectionId } = req.params;
 
+  const auditContext = createAuditContext(req);
+
   const sectionValues = await applicantApplicationService.saveSectionDraft(
     applicantId,
     sectionId,
     req.body,
+    auditContext,
   );
 
   return ApiResponse.success(

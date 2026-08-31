@@ -10,6 +10,9 @@ import {
 } from "../../application-definition/constants.js";
 import { NotFoundError } from "../../common/errors/not-found-error.js";
 import { ConflictError } from "../../common/errors/conflict-error.js";
+import { recordAuditAction } from "../audit/record-audit-action.js";
+import { AUDIT_ACTIONS } from "../../common/constants/audit-actions.js";
+import { AUDIT_ENTITY_TYPES } from "../../common/constants/audit-entity-types.js";
 
 const initializeApplication = async (applicantId, transaction) => {
   const phases = applicationDefinitionService.getPhases();
@@ -379,7 +382,12 @@ const getSectionValues = async (applicantId, sectionId) => {
   };
 };
 
-const saveSectionDraft = async (applicantId, sectionId, values) => {
+const saveSectionDraft = async (
+  applicantId,
+  sectionId,
+  values,
+  auditContext,
+) => {
   return sequelize.transaction(async (transaction) => {
     // -----------------------------------------------------------------------
     // Find applicant application
@@ -407,7 +415,9 @@ const saveSectionDraft = async (applicantId, sectionId, values) => {
       throw new NotFoundError("Application section definition not found.");
     }
 
-    // convert values to array for repeateable sections
+    // -----------------------------------------------------------------------
+    // Convert values to array for repeatable sections
+    // -----------------------------------------------------------------------
 
     if (section.repeatable && !Array.isArray(values)) {
       values = Object.values(values).map((item) => JSON.parse(item));
@@ -449,8 +459,9 @@ const saveSectionDraft = async (applicantId, sectionId, values) => {
         "This application section has already been approved.",
       );
     }
+
     // -----------------------------------------------------------------------
-    // Validate repeatable section structure.
+    // Validate repeatable section structure
     // -----------------------------------------------------------------------
 
     if (section.repeatable && !Array.isArray(values)) {
@@ -458,7 +469,7 @@ const saveSectionDraft = async (applicantId, sectionId, values) => {
     }
 
     // -----------------------------------------------------------------------
-    // Validate non-repeatable section structure.
+    // Validate non-repeatable section structure
     // -----------------------------------------------------------------------
 
     if (
@@ -471,7 +482,7 @@ const saveSectionDraft = async (applicantId, sectionId, values) => {
     }
 
     // -----------------------------------------------------------------------
-    // Find existing saved values.
+    // Find existing saved values
     // -----------------------------------------------------------------------
 
     const existingValues =
@@ -484,16 +495,27 @@ const saveSectionDraft = async (applicantId, sectionId, values) => {
       );
 
     // -----------------------------------------------------------------------
-    // Convert values to JSON string.
-    //
-    // The database stores this as a string because of the
-    // MySQL JSON/default-value compatibility issue.
+    // Capture previous values for audit logging
+    // -----------------------------------------------------------------------
+
+    let previousValues = null;
+
+    if (existingValues?.values) {
+      try {
+        previousValues = JSON.parse(existingValues.values);
+      } catch {
+        previousValues = existingValues.values;
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // Convert values to JSON string
     // -----------------------------------------------------------------------
 
     const serializedValues = JSON.stringify(values);
 
     // -----------------------------------------------------------------------
-    // Create or update.
+    // Create or update
     // -----------------------------------------------------------------------
 
     if (!existingValues) {
@@ -520,7 +542,42 @@ const saveSectionDraft = async (applicantId, sectionId, values) => {
     }
 
     // -----------------------------------------------------------------------
-    // Return the same structure expected by the frontend.
+    // Record audit action
+    //
+    // Uses the same transaction as the application update.
+    // -----------------------------------------------------------------------
+
+    await recordAuditAction({
+      auditContext,
+
+      action: existingValues
+        ? AUDIT_ACTIONS.APPLICATION_SECTION_UPDATED
+        : AUDIT_ACTIONS.APPLICATION_SECTION_CREATED,
+
+      entityType: AUDIT_ENTITY_TYPES.APPLICATION_SECTION,
+
+      entityId: sectionId,
+
+      applicationId: application.id,
+
+      previousData: previousValues,
+
+      newData: values,
+
+      metadata: {
+        applicantId,
+        sectionStatus: sectionProgress.status,
+        repeatable: section.repeatable,
+        operation: existingValues ? "update" : "create",
+      },
+
+      options: {
+        transaction,
+      },
+    });
+
+    // -----------------------------------------------------------------------
+    // Return the same structure expected by the frontend
     //
     // Saving a draft does NOT change the section status.
     // -----------------------------------------------------------------------
@@ -533,6 +590,7 @@ const saveSectionDraft = async (applicantId, sectionId, values) => {
     };
   });
 };
+
 const submitSection = async (applicantId, sectionId) => {
   return sequelize.transaction(async (transaction) => {
     // -----------------------------------------------------------------------
