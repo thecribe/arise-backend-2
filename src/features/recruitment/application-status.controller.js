@@ -1,37 +1,19 @@
-/**
- * -----------------------------------------------------------------------------
- * File: application-status.controller.js
- *
- * Description:
- *
- * Handles Recruitment Manager application status and stage updates.
- * -----------------------------------------------------------------------------
- */
-
+import { createAuditContext } from "../../common/audit/audit-context.js";
 import { ApiResponse } from "../../common/responses/api-response.js";
 import { applicationStatusService } from "./application-status.service.js";
-
-/**
- * -----------------------------------------------------------------------------
- * Update application status and/or stage.
- * -----------------------------------------------------------------------------
- */
 
 const updateApplicationStatusController = async (req, res) => {
   const { applicationId } = req.params;
 
-  console.log(req.body);
+  const auditContext = createAuditContext(req);
 
   const result = await applicationStatusService.updateApplicationStatus({
     applicantId: applicationId,
-
     status: req.body.status,
-
     stage: req.body.stage,
-
     reason: req.body.reason,
-
     changedBy: req.user.id,
+    auditContext,
   });
 
   return ApiResponse.success(
@@ -41,13 +23,7 @@ const updateApplicationStatusController = async (req, res) => {
   );
 };
 
-/**
- * -----------------------------------------------------------------------------
- * Get Current Applicant Application Status.
- * -----------------------------------------------------------------------------
- */
-
-const getApplicantApplicationStatus = async (req, res, next) => {
+const getApplicantApplicationStatus = async (req, res) => {
   const applicantId = req.user.id;
 
   const applicationStatus =

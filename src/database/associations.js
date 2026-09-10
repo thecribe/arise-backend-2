@@ -1,3 +1,4 @@
+import { ApplicantApplicationSectionManagerValue } from "./models/ApplicantApplicationSectionManagerValue.js";
 import { AuditLog } from "./models/AuditLog.js";
 import {
   JobType,
@@ -110,6 +111,16 @@ const registerAssociations = () => {
   });
 
   ApplicantApplicationSectionValue.belongsTo(ApplicantApplication, {
+    foreignKey: "application_id",
+    as: "application",
+  });
+
+  ApplicantApplication.hasMany(ApplicantApplicationSectionManagerValue, {
+    foreignKey: "application_id",
+    as: "sectionManagerValues",
+  });
+
+  ApplicantApplicationSectionManagerValue.belongsTo(ApplicantApplication, {
     foreignKey: "application_id",
     as: "application",
   });

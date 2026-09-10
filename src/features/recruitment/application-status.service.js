@@ -19,6 +19,9 @@ import {
 } from "../../application-definition/constants.js";
 import { NotFoundError } from "../../common/errors/not-found-error.js";
 import { ConflictError } from "../../common/errors/conflict-error.js";
+import { AUDIT_ACTIONS } from "../../common/constants/audit-actions.js";
+import { AUDIT_ENTITY_TYPES } from "../../common/constants/audit-entity-types.js";
+import { recordAuditAction } from "../audit/record-audit-action.js";
 
 /**
  * -----------------------------------------------------------------------------
@@ -32,6 +35,7 @@ const updateApplicationStatus = async ({
   stage,
   reason,
   changedBy,
+  auditContext,
 }) => {
   return sequelize.transaction(async (transaction) => {
     /**
@@ -78,12 +82,6 @@ const updateApplicationStatus = async ({
     /**
      * -------------------------------------------------------------------------
      * Resolve the new state.
-     *
-     * This allows the manager to update:
-     *
-     * - only status
-     * - only stage
-     * - both status and stage
      * -------------------------------------------------------------------------
      */
 
@@ -105,7 +103,17 @@ const updateApplicationStatus = async ({
 
     /**
      * -------------------------------------------------------------------------
-     * Update existing application status history.
+     * Determine what changed.
+     * -------------------------------------------------------------------------
+     */
+
+    const statusChanged = currentStatus !== nextStatus;
+
+    const stageChanged = currentStage !== nextStage;
+
+    /**
+     * -------------------------------------------------------------------------
+     * Update application status history.
      *
      * The existing record represents the current application state.
      * -------------------------------------------------------------------------
@@ -117,29 +125,17 @@ const updateApplicationStatus = async ({
       await applicationStatusRepository.updateApplicationStatusHistory(
         {
           historyId: latestStatus.id,
-
           previousStatus: currentStatus,
           status: nextStatus,
-
           previousStage: currentStage,
           stage: nextStage,
-
           reason: reason ?? latestStatus.reason ?? null,
-
           changedBy,
         },
         {
           transaction,
         },
       );
-
-      /**
-       * -----------------------------------------------------------------------
-       * Fetch the updated record.
-       *
-       * This ensures the response contains the latest timestamps and values.
-       * -----------------------------------------------------------------------
-       */
 
       history =
         await applicationStatusRepository.findApplicationStatusHistoryById(
@@ -148,12 +144,16 @@ const updateApplicationStatus = async ({
             transaction,
           },
         );
+
+      if (!history) {
+        throw new ConflictError(
+          "Updated application status history could not be retrieved.",
+        );
+      }
     } else {
       /**
        * -----------------------------------------------------------------------
-       * Fallback for applications without a status history record.
-       *
-       * Normally initialization should already have created this record.
+       * Fallback for applications without an existing status history.
        * -----------------------------------------------------------------------
        */
 
@@ -161,15 +161,11 @@ const updateApplicationStatus = async ({
         await applicationStatusRepository.createApplicationStatusHistory(
           {
             application_id: application.id,
-
             previous_status: null,
             status: nextStatus,
-
             previous_stage: null,
             stage: nextStage,
-
             reason: reason ?? null,
-
             changed_by: changedBy,
           },
           {
@@ -180,25 +176,82 @@ const updateApplicationStatus = async ({
 
     /**
      * -------------------------------------------------------------------------
+     * Record status audit.
+     * -------------------------------------------------------------------------
+     */
+
+    if (statusChanged) {
+      await recordAuditAction({
+        auditContext,
+        action: AUDIT_ACTIONS.APPLICATION_STATUS_UPDATED,
+        entityType: AUDIT_ENTITY_TYPES.APPLICATION_STATUS,
+        entityId: history.id,
+        applicationId: application.id,
+        previousData: {
+          status: currentStatus,
+        },
+        newData: {
+          status: nextStatus,
+        },
+        metadata: {
+          applicantId,
+          changedBy,
+          reason: reason ?? null,
+        },
+        options: {
+          transaction,
+        },
+      });
+    }
+
+    /**
+     * -------------------------------------------------------------------------
+     * Record stage audit.
+     * -------------------------------------------------------------------------
+     */
+
+    if (stageChanged) {
+      await recordAuditAction({
+        auditContext,
+        action: AUDIT_ACTIONS.APPLICATION_STAGE_UPDATED,
+        entityType: AUDIT_ENTITY_TYPES.APPLICATION_STATUS,
+        entityId: history.id,
+        applicationId: application.id,
+        previousData: {
+          stage: currentStage,
+        },
+        newData: {
+          stage: nextStage,
+        },
+        metadata: {
+          applicantId,
+          changedBy,
+          reason: reason ?? null,
+        },
+        options: {
+          transaction,
+        },
+      });
+    }
+
+    /**
+     * -------------------------------------------------------------------------
      * Return clean API contract.
      * -------------------------------------------------------------------------
      */
 
     return {
       id: history.id,
-
       previousStatus: history.previous_status,
       status: history.status,
-
       previousStage: history.previous_stage,
       stage: history.stage,
-
       reason: history.reason,
-
       changedBy: history.changed_by,
 
-      createdAt: history.created_at,
-      updatedAt: history.updated_at,
+      createdAt: history.created_at ? history.created_at.toISOString() : null,
+
+      updatedAt: history.updated_at ? history.updated_at.toISOString() : null,
     };
   });
 };

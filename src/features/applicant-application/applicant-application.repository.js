@@ -23,6 +23,10 @@ const createApplicationSections = async (payload, options = {}) => {
   return ApplicantApplicationSection.bulkCreate(payload, options);
 };
 
+const createApplicationSection = async (payload, options = {}) => {
+  return ApplicantApplicationSection.create(payload, options);
+};
+
 const findApplicationByApplicantId = async (applicantId, options = {}) => {
   return ApplicantApplication.findOne({
     where: {
@@ -182,6 +186,7 @@ export {
   createApplicationStatusHistory,
   createApplicationPhases,
   createApplicationSections,
+  createApplicationSection,
   findApplicationByApplicantId,
   findApplicationById,
   findApplicationPhases,

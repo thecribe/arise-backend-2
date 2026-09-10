@@ -57,9 +57,12 @@ const submitSection = async (req, res) => {
 
   const { sectionId } = req.params;
 
+  const auditContext = createAuditContext(req);
+
   const result = await applicantApplicationService.submitSection(
     applicantId,
     sectionId,
+    auditContext,
   );
 
   return ApiResponse.success(

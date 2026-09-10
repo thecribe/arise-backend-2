@@ -25,6 +25,7 @@ import {
   ApplicantApplicationSectionValue,
   ApplicationSectionReviewComment,
 } from "../../database/models/index.js";
+import { ApplicantApplicationSectionManagerValue } from "../../database/models/ApplicantApplicationSectionManagerValue.js";
 
 /**
  * -----------------------------------------------------------------------------
@@ -339,7 +340,7 @@ const findApplicants = async ({
  *
  * Those are loaded separately when the manager selects a section.
  */
-const findApplicantApplicationById = async (applicantId) => {
+const findApplicantApplicationById = async (applicantId, options = {}) => {
   return ApplicantApplication.findOne({
     where: {
       applicant_id: applicantId,
@@ -388,6 +389,64 @@ const findApplicantApplicationById = async (applicantId) => {
         as: "statusHistory",
       },
     ],
+
+    ...options,
+  });
+};
+const findApplicantApplicationByApplicationId = async (
+  applicationId,
+  options = {},
+) => {
+  return ApplicantApplication.findOne({
+    where: {
+      id: applicationId,
+    },
+
+    attributes: [
+      "id",
+      "applicant_id",
+      "current_phase_id",
+      "current_section_id",
+      "progress",
+      "submitted_at",
+      "created_at",
+      "updated_at",
+    ],
+
+    include: [
+      {
+        model: User,
+        as: "applicant",
+
+        attributes: [
+          "id",
+          "first_name",
+          "last_name",
+          "email",
+          "phone_number",
+          "address",
+          "postcode",
+          "job_type_id",
+        ],
+
+        include: [
+          {
+            model: JobType,
+            as: "jobType",
+
+            attributes: ["id", "name"],
+
+            required: false,
+          },
+        ],
+      },
+      {
+        model: ApplicationStatusHistory,
+        as: "statusHistory",
+      },
+    ],
+
+    ...options,
   });
 };
 
@@ -542,6 +601,15 @@ const findApplicationSectionDetails = async (
     ...options,
   });
 
+  const managerSectionValues =
+    await ApplicantApplicationSectionManagerValue.findOne({
+      where: {
+        application_id: applicationId,
+        section_id: sectionId,
+      },
+      ...options,
+    });
+
   /**
    * ---------------------------------------------------------------------------
    * Find all review comments.
@@ -576,6 +644,7 @@ const findApplicationSectionDetails = async (
   return {
     section,
     sectionValues,
+    managerSectionValues,
     comments,
   };
 };
@@ -702,6 +771,47 @@ const deleteSectionReviewComment = async (commentId, options = {}) => {
 
 /**
  * -----------------------------------------------------------------------------
+ * Find saved manager values for an application section.
+ * -----------------------------------------------------------------------------
+ */
+const findManagerSectionValues = async (
+  applicationId,
+  sectionId,
+  options = {},
+) => {
+  return ApplicantApplicationSectionManagerValue.findOne({
+    where: {
+      application_id: applicationId,
+      section_id: sectionId,
+    },
+    ...options,
+  });
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ * Create saved manager section values.
+ * -----------------------------------------------------------------------------
+ */
+const createManagerSectionValues = async (payload, options = {}) => {
+  return ApplicantApplicationSectionManagerValue.create(payload, options);
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ * Update saved manager section values.
+ * -----------------------------------------------------------------------------
+ */
+const updateManagerSectionValues = async (
+  sectionValues,
+  payload,
+  options = {},
+) => {
+  return sectionValues.update(payload, options);
+};
+
+/**
+ * -----------------------------------------------------------------------------
  * Export Recruitment repository.
  * -----------------------------------------------------------------------------
  */
@@ -711,6 +821,7 @@ export const recruitmentRepository = {
   findApplicants,
 
   findApplicantApplicationById,
+  findApplicantApplicationByApplicationId,
   findLatestApplicationStatus,
   findApplicantApplicationPhases,
   findApplicantApplicationSections,
@@ -724,4 +835,8 @@ export const recruitmentRepository = {
   findSectionReviewCommentById,
   updateSectionReviewComment,
   deleteSectionReviewComment,
+
+  findManagerSectionValues,
+  createManagerSectionValues,
+  updateManagerSectionValues,
 };

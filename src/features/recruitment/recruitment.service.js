@@ -22,6 +22,9 @@ import { ConflictError } from "../../common/errors/conflict-error.js";
 import { ForbiddenError } from "../../common/errors/forbidden-error.js";
 import { UnauthorizedError } from "../../common/errors/unauthorized-error.js";
 import { BadRequestError } from "../../common/errors/bad-request-error.js";
+import { AUDIT_ACTIONS } from "../../common/constants/audit-actions.js";
+import { AUDIT_ENTITY_TYPES } from "../../common/constants/audit-entity-types.js";
+import { recordAuditAction } from "../audit/record-audit-action.js";
 
 /**
  * -----------------------------------------------------------------------------
@@ -731,6 +734,7 @@ const updateApplicationSectionStatus = async ({
   status,
   comment,
   managerId,
+  auditContext,
 }) => {
   return sequelize.transaction(async (transaction) => {
     /**
@@ -769,6 +773,28 @@ const updateApplicationSectionStatus = async ({
 
     /**
      * -------------------------------------------------------------------------
+     * Capture the previous state before updating.
+     * -------------------------------------------------------------------------
+     */
+
+    const previousData = {
+      status: applicationSection.status,
+
+      submittedAt: applicationSection.submitted_at
+        ? new Date(applicationSection.submitted_at).toISOString()
+        : null,
+
+      completedAt: applicationSection.completed_at
+        ? new Date(applicationSection.completed_at).toISOString()
+        : null,
+
+      approvedAt: applicationSection.approved_at
+        ? new Date(applicationSection.approved_at).toISOString()
+        : null,
+    };
+
+    /**
+     * -------------------------------------------------------------------------
      * Update the section status.
      * -------------------------------------------------------------------------
      */
@@ -782,11 +808,12 @@ const updateApplicationSectionStatus = async ({
 
     /**
      * -------------------------------------------------------------------------
-     * If rejecting, create the rejection comment.
-     *
-     * This uses the separate comment model you created earlier.
+     * Create rejection comment when applicable.
      * -------------------------------------------------------------------------
      */
+
+    let createdComment = null;
+
     if (status === "rejected") {
       if (!comment?.trim()) {
         throw new ForbiddenError(
@@ -794,12 +821,106 @@ const updateApplicationSectionStatus = async ({
         );
       }
 
-      await recruitmentRepository.createSectionReviewComment({
+      createdComment = await recruitmentRepository.createSectionReviewComment({
         applicationId,
         sectionId,
         comment,
-        managerId: managerId,
+        managerId,
         transaction,
+      });
+    }
+
+    /**
+     * -------------------------------------------------------------------------
+     * Retrieve updated section.
+     * -------------------------------------------------------------------------
+     */
+
+    const updatedSection = await recruitmentRepository.findApplicationSection({
+      applicationId,
+      sectionId,
+      transaction,
+    });
+
+    /**
+     * -------------------------------------------------------------------------
+     * Record section status change.
+     * -------------------------------------------------------------------------
+     */
+
+    await recordAuditAction({
+      auditContext,
+
+      action: AUDIT_ACTIONS.APPLICATION_SECTION_STATUS_UPDATED,
+
+      entityType: AUDIT_ENTITY_TYPES.APPLICATION_SECTION,
+
+      entityId: sectionId,
+
+      applicationId,
+
+      previousData,
+
+      newData: {
+        status: updatedSection.status,
+
+        submittedAt: updatedSection.submitted_at
+          ? new Date(updatedSection.submitted_at).toISOString()
+          : null,
+
+        approvedAt: updatedSection.approved_at
+          ? new Date(updatedSection.approved_at).toISOString()
+          : null,
+      },
+
+      metadata: {
+        managerId,
+        previousStatus: applicationSection.status,
+        newStatus: status,
+      },
+
+      options: {
+        transaction,
+      },
+    });
+
+    /**
+     * -------------------------------------------------------------------------
+     * Record rejection comment creation separately.
+     * -------------------------------------------------------------------------
+     */
+
+    if (createdComment) {
+      await recordAuditAction({
+        auditContext,
+
+        action: AUDIT_ACTIONS.SECTION_REVIEW_COMMENT_CREATED,
+
+        entityType: AUDIT_ENTITY_TYPES.APPLICATION_SECTION,
+
+        entityId: sectionId,
+
+        applicationId,
+
+        previousData: null,
+
+        newData: {
+          commentId: createdComment.id,
+          comment: createdComment.comment,
+          createdBy: managerId,
+
+          createdAt: createdComment.created_at
+            ? new Date(createdComment.created_at).toISOString()
+            : null,
+        },
+
+        metadata: {
+          actionReason: "section_rejected",
+        },
+
+        options: {
+          transaction,
+        },
       });
     }
 
@@ -809,11 +930,7 @@ const updateApplicationSectionStatus = async ({
      * -------------------------------------------------------------------------
      */
 
-    return recruitmentRepository.findApplicationSection({
-      applicationId,
-      sectionId,
-      transaction,
-    });
+    return updatedSection;
   });
 };
 
@@ -827,51 +944,88 @@ const createSectionReviewComment = async ({
   sectionId,
   comment,
   managerId,
+  auditContext,
 }) => {
-  /**
-   * ---------------------------------------------------------------------------
-   * Ensure the application section exists.
-   * ---------------------------------------------------------------------------
-   */
+  return sequelize.transaction(async (transaction) => {
+    /**
+     * ---------------------------------------------------------------------------
+     * Ensure the application section exists.
+     * ---------------------------------------------------------------------------
+     */
 
-  const section = await recruitmentRepository.findApplicationSection({
-    applicationId,
-    sectionId,
-  });
-
-  if (!section) {
-    throw new NotFoundError("Application section not found.");
-  }
-
-  /**
-   * ---------------------------------------------------------------------------
-   * Create the comment.
-   * ---------------------------------------------------------------------------
-   */
-
-  const createdComment = await recruitmentRepository.createSectionReviewComment(
-    {
+    const section = await recruitmentRepository.findApplicationSection({
       applicationId,
       sectionId,
-      comment,
-      managerId,
-    },
-  );
+      transaction,
+    });
 
-  /**
-   * ---------------------------------------------------------------------------
-   * Retrieve the comment again with creator information.
-   * ---------------------------------------------------------------------------
-   */
+    if (!section) {
+      throw new NotFoundError("Application section not found.");
+    }
 
-  const commentWithCreator =
-    await recruitmentRepository.findSectionReviewCommentById(createdComment.id);
+    /**
+     * ---------------------------------------------------------------------------
+     * Create the comment.
+     * ---------------------------------------------------------------------------
+     */
 
-  if (!commentWithCreator) {
-    throw new ForbiddenError("Review comment could not be retrieved.");
-  }
+    const createdComment =
+      await recruitmentRepository.createSectionReviewComment({
+        applicationId,
+        sectionId,
+        comment,
+        managerId,
+        options: { transaction },
+      });
 
-  return mapSectionReviewComment(commentWithCreator);
+    /**
+     * ---------------------------------------------------------------------------
+     * Retrieve the comment again with creator information.
+     * ---------------------------------------------------------------------------
+     */
+
+    const commentWithCreator =
+      await recruitmentRepository.findSectionReviewCommentById(
+        createdComment.id,
+        {
+          transaction,
+        },
+      );
+
+    if (!commentWithCreator) {
+      throw new ForbiddenError("Review comment could not be retrieved.");
+    }
+
+    const mappedComment = mapSectionReviewComment(commentWithCreator);
+
+    /**
+     * ---------------------------------------------------------------------------
+     * Record audit action.
+     *
+     * Uses the same transaction as the review comment creation.
+     * ---------------------------------------------------------------------------
+     */
+
+    await recordAuditAction({
+      auditContext,
+      action: AUDIT_ACTIONS.SECTION_REVIEW_COMMENT_CREATED,
+      entityType: AUDIT_ENTITY_TYPES.APPLICATION_SECTION,
+      entityId: sectionId,
+      applicationId,
+      previousData: null,
+      newData: mappedComment,
+      metadata: {
+        managerId,
+        commentId: createdComment.id,
+        operation: "create",
+      },
+      options: {
+        transaction,
+      },
+    });
+
+    return mappedComment;
+  });
 };
 
 /**
@@ -885,80 +1039,131 @@ const updateSectionReviewComment = async ({
   commentId,
   comment,
   managerId,
+  auditContext,
 }) => {
-  /**
-   * ---------------------------------------------------------------------------
-   * Find the existing comment.
-   * ---------------------------------------------------------------------------
-   */
+  return sequelize.transaction(async (transaction) => {
+    /**
+     * ---------------------------------------------------------------------------
+     * Find the existing comment.
+     * ---------------------------------------------------------------------------
+     */
 
-  const existingComment =
-    await recruitmentRepository.findSectionReviewCommentById(commentId);
+    const existingComment =
+      await recruitmentRepository.findSectionReviewCommentById(commentId, {
+        transaction,
+      });
 
-  if (!existingComment) {
-    throw new NotFoundError("Review comment not found.");
-  }
+    if (!existingComment) {
+      throw new NotFoundError("Review comment not found.");
+    }
 
-  /**
-   * ---------------------------------------------------------------------------
-   * Ensure the comment belongs to this application.
-   * ---------------------------------------------------------------------------
-   */
+    /**
+     * ---------------------------------------------------------------------------
+     * Ensure the comment belongs to this application.
+     * ---------------------------------------------------------------------------
+     */
 
-  if (existingComment.application_id !== applicationId) {
-    throw new UnauthorizedError(
-      "Review comment does not belong to this application.",
+    if (existingComment.application_id !== applicationId) {
+      throw new UnauthorizedError(
+        "Review comment does not belong to this application.",
+      );
+    }
+
+    /**
+     * ---------------------------------------------------------------------------
+     * Ensure the comment belongs to this section.
+     * ---------------------------------------------------------------------------
+     */
+
+    if (existingComment.section_id !== sectionId) {
+      throw new UnauthorizedError(
+        "Review comment does not belong to this application section.",
+      );
+    }
+
+    /**
+     * ---------------------------------------------------------------------------
+     * Only the creator can edit the comment.
+     * ---------------------------------------------------------------------------
+     */
+
+    if (existingComment.created_by !== managerId) {
+      throw new UnauthorizedError(
+        "You are not allowed to edit this review comment.",
+      );
+    }
+
+    /**
+     * ---------------------------------------------------------------------------
+     * Capture previous comment data for audit logging.
+     * ---------------------------------------------------------------------------
+     */
+
+    const previousData = mapSectionReviewComment(existingComment);
+
+    /**
+     * ---------------------------------------------------------------------------
+     * Update the comment.
+     * ---------------------------------------------------------------------------
+     */
+
+    await recruitmentRepository.updateSectionReviewComment(
+      commentId,
+      {
+        comment,
+      },
+      {
+        transaction,
+      },
     );
-  }
 
-  /**
-   * ---------------------------------------------------------------------------
-   * Ensure the comment belongs to this section.
-   * ---------------------------------------------------------------------------
-   */
+    /**
+     * ---------------------------------------------------------------------------
+     * Retrieve the updated comment.
+     * ---------------------------------------------------------------------------
+     */
 
-  if (existingComment.section_id !== sectionId) {
-    throw new UnauthorizedError(
-      "Review comment does not belong to this application section.",
-    );
-  }
+    const updatedComment =
+      await recruitmentRepository.findSectionReviewCommentById(commentId, {
+        transaction,
+      });
 
-  /**
-   * ---------------------------------------------------------------------------
-   * Only the creator can edit the comment.
-   * ---------------------------------------------------------------------------
-   */
+    if (!updatedComment) {
+      throw new BadRequestError(
+        "Updated review comment could not be retrieved.",
+      );
+    }
 
-  if (existingComment.created_by !== managerId) {
-    throw new UnauthorizedError(
-      "You are not allowed to edit this review comment.",
-    );
-  }
+    const mappedUpdatedComment = mapSectionReviewComment(updatedComment);
 
-  /**
-   * ---------------------------------------------------------------------------
-   * Update the comment.
-   * ---------------------------------------------------------------------------
-   */
+    /**
+     * ---------------------------------------------------------------------------
+     * Record audit action.
+     *
+     * Uses the same transaction as the comment update.
+     * ---------------------------------------------------------------------------
+     */
 
-  await recruitmentRepository.updateSectionReviewComment(commentId, {
-    comment,
+    await recordAuditAction({
+      auditContext,
+      action: AUDIT_ACTIONS.SECTION_REVIEW_COMMENT_UPDATED,
+      entityType: AUDIT_ENTITY_TYPES.APPLICATION_SECTION,
+      entityId: sectionId,
+      applicationId,
+      previousData,
+      newData: mappedUpdatedComment,
+      metadata: {
+        managerId,
+        commentId,
+        operation: "update",
+      },
+      options: {
+        transaction,
+      },
+    });
+
+    return mappedUpdatedComment;
   });
-
-  /**
-   * ---------------------------------------------------------------------------
-   * Retrieve the updated comment.
-   * ---------------------------------------------------------------------------
-   */
-
-  const updatedComment =
-    await recruitmentRepository.findSectionReviewCommentById(commentId);
-
-  if (!updatedComment) {
-    throw new BadRequestError("Updated review comment could not be retrieved.");
-  }
-
-  return mapSectionReviewComment(updatedComment);
 };
 
 /**
@@ -971,63 +1176,104 @@ const deleteSectionReviewComment = async ({
   sectionId,
   commentId,
   managerId,
+  auditContext,
 }) => {
-  /**
-   * ---------------------------------------------------------------------------
-   * Find the existing comment.
-   * ---------------------------------------------------------------------------
-   */
+  return sequelize.transaction(async (transaction) => {
+    /**
+     * ---------------------------------------------------------------------------
+     * Find the existing comment.
+     * ---------------------------------------------------------------------------
+     */
 
-  const existingComment =
-    await recruitmentRepository.findSectionReviewCommentById(commentId);
+    const existingComment =
+      await recruitmentRepository.findSectionReviewCommentById(commentId, {
+        transaction,
+      });
 
-  if (!existingComment) {
-    throw new NotFoundError("Review comment not found.");
-  }
+    if (!existingComment) {
+      throw new NotFoundError("Review comment not found.");
+    }
 
-  /**
-   * ---------------------------------------------------------------------------
-   * Ensure the comment belongs to this application.
-   * ---------------------------------------------------------------------------
-   */
+    /**
+     * ---------------------------------------------------------------------------
+     * Ensure the comment belongs to this application.
+     * ---------------------------------------------------------------------------
+     */
 
-  if (existingComment.application_id !== applicationId) {
-    throw new ForbiddenError(
-      "Review comment does not belong to this application.",
-    );
-  }
+    if (existingComment.application_id !== applicationId) {
+      throw new ForbiddenError(
+        "Review comment does not belong to this application.",
+      );
+    }
 
-  /**
-   * ---------------------------------------------------------------------------
-   * Ensure the comment belongs to this section.
-   * ---------------------------------------------------------------------------
-   */
+    /**
+     * ---------------------------------------------------------------------------
+     * Ensure the comment belongs to this section.
+     * ---------------------------------------------------------------------------
+     */
 
-  if (existingComment.section_id !== sectionId) {
-    throw new ForbiddenError(
-      "Review comment does not belong to this application section.",
-    );
-  }
+    if (existingComment.section_id !== sectionId) {
+      throw new ForbiddenError(
+        "Review comment does not belong to this application section.",
+      );
+    }
 
-  /**
-   * ---------------------------------------------------------------------------
-   * Only the creator can delete the comment.
-   * ---------------------------------------------------------------------------
-   */
+    /**
+     * ---------------------------------------------------------------------------
+     * Only the creator can delete the comment.
+     * ---------------------------------------------------------------------------
+     */
 
-  if (existingComment.created_by !== managerId) {
-    throw new UnauthorizedError(
-      "You are not allowed to delete this review comment.",
-    );
-  }
+    if (existingComment.created_by !== managerId) {
+      throw new UnauthorizedError(
+        "You are not allowed to delete this review comment.",
+      );
+    }
 
-  /**
-   * ---------------------------------------------------------------------------
-   * Delete the comment.
-   * ---------------------------------------------------------------------------
-   */
+    /**
+     * ---------------------------------------------------------------------------
+     * Capture previous data for audit logging.
+     * ---------------------------------------------------------------------------
+     */
 
-  await recruitmentRepository.deleteSectionReviewComment(commentId);
+    const previousData = mapSectionReviewComment(existingComment);
+
+    /**
+     * ---------------------------------------------------------------------------
+     * Delete the comment.
+     * ---------------------------------------------------------------------------
+     */
+
+    await recruitmentRepository.deleteSectionReviewComment(commentId, {
+      transaction,
+    });
+
+    /**
+     * ---------------------------------------------------------------------------
+     * Record audit action.
+     *
+     * Uses the same transaction as the comment deletion.
+     * ---------------------------------------------------------------------------
+     */
+
+    await recordAuditAction({
+      auditContext,
+      action: AUDIT_ACTIONS.SECTION_REVIEW_COMMENT_DELETED,
+      entityType: AUDIT_ENTITY_TYPES.APPLICATION_SECTION,
+      entityId: sectionId,
+      applicationId,
+      previousData,
+      newData: null,
+      metadata: {
+        managerId,
+        commentId,
+        operation: "delete",
+      },
+      options: {
+        transaction,
+      },
+    });
+  });
 };
 
 /**
@@ -1056,6 +1302,7 @@ const updateApplicationPhaseStatus = async ({
   applicationId,
   phaseId,
   status,
+  auditContext,
 }) => {
   return sequelize.transaction(async (transaction) => {
     /**
@@ -1105,6 +1352,21 @@ const updateApplicationPhaseStatus = async ({
 
     /**
      * -------------------------------------------------------------------------
+     * Capture previous phase data for audit logging.
+     *
+     * Dates are converted to ISO strings.
+     * -------------------------------------------------------------------------
+     */
+
+    const previousData = {
+      id: phase.phase_id,
+      status: phase.status,
+      startedAt: phase.started_at ? phase.started_at.toISOString() : null,
+      completedAt: phase.completed_at ? phase.completed_at.toISOString() : null,
+    };
+
+    /**
+     * -------------------------------------------------------------------------
      * Validate phase transition.
      * -------------------------------------------------------------------------
      */
@@ -1128,9 +1390,6 @@ const updateApplicationPhaseStatus = async ({
     /**
      * -------------------------------------------------------------------------
      * When moving a phase to in_progress, synchronize section records.
-     *
-     * This ensures every section currently defined for the phase exists
-     * for the applicant.
      * -------------------------------------------------------------------------
      */
 
@@ -1142,43 +1401,24 @@ const updateApplicationPhaseStatus = async ({
           transaction,
         });
 
-      /**
-       * Create a lookup of existing section IDs.
-       */
-
       const existingSectionIds = new Set(
         existingSections.map((section) => section.section_id),
       );
-
-      /**
-       * Find sections in the definition that do not yet have an
-       * applicant-specific progress record.
-       */
 
       const missingSections = phaseSections.filter(
         (section) => !existingSectionIds.has(section.id),
       );
 
-      /**
-       * Create missing section records.
-       */
-
       if (missingSections.length > 0) {
         await recruitmentPhaseRepository.createApplicationSections({
           sections: missingSections.map((section) => ({
             application_id: applicationId,
-
             section_id: section.id,
-
             status: "in_progress",
-
             recruiter_comment: null,
-
             submitted_at: null,
-
             approved_at: null,
           })),
-
           transaction,
         });
       }
@@ -1194,17 +1434,7 @@ const updateApplicationPhaseStatus = async ({
     let completedAt = phase.completed_at;
 
     if (status === "in_progress") {
-      /**
-       * Preserve the original start date if one exists.
-       *
-       * If the phase has never been started, set it now.
-       */
-
       startedAt = phase.started_at ?? new Date();
-
-      /**
-       * Reopening a phase means it is no longer completed.
-       */
 
       completedAt = null;
     }
@@ -1241,8 +1471,6 @@ const updateApplicationPhaseStatus = async ({
     /**
      * -------------------------------------------------------------------------
      * Synchronize all existing sections belonging to this phase.
-     *
-     * Missing sections have already been created above when required.
      * -------------------------------------------------------------------------
      */
 
@@ -1271,27 +1499,69 @@ const updateApplicationPhaseStatus = async ({
 
     /**
      * -------------------------------------------------------------------------
-     * Return API contract.
+     * Build final phase data.
+     *
+     * Dates are converted to ISO strings.
      * -------------------------------------------------------------------------
      */
 
-    return {
+    const newData = {
       id: updatedPhase.phase_id,
-
       status: updatedPhase.status,
-
       startedAt: updatedPhase.started_at
         ? updatedPhase.started_at.toISOString()
         : null,
-
       completedAt: updatedPhase.completed_at
         ? updatedPhase.completed_at.toISOString()
         : null,
     };
+
+    /**
+     * -------------------------------------------------------------------------
+     * Record audit action.
+     *
+     * Uses the same transaction as the phase and section updates.
+     * -------------------------------------------------------------------------
+     */
+
+    await recordAuditAction({
+      auditContext,
+      action:
+        status === "approved"
+          ? AUDIT_ACTIONS.APPLICATION_PHASE_APPROVED
+          : AUDIT_ACTIONS.APPLICATION_PHASE_UPDATED,
+      entityType: AUDIT_ENTITY_TYPES.APPLICATION_PHASE,
+      entityId: phaseId,
+      applicationId,
+      previousData,
+      newData,
+      metadata: {
+        operation: "update",
+        previousStatus: phase.status,
+        newStatus: status,
+        synchronizedSectionIds: sectionIds,
+      },
+      options: {
+        transaction,
+      },
+    });
+
+    /**
+     * -------------------------------------------------------------------------
+     * Return API contract.
+     * -------------------------------------------------------------------------
+     */
+
+    return newData;
   });
 };
 
-const updateApplicationData = async (applicantId, sectionId, values) => {
+const updateApplicationData = async (
+  applicantId,
+  sectionId,
+  values,
+  auditContext,
+) => {
   return sequelize.transaction(async (transaction) => {
     // -----------------------------------------------------------------------
     // Find applicant application
@@ -1319,7 +1589,9 @@ const updateApplicationData = async (applicantId, sectionId, values) => {
       throw new NotFoundError("Application section definition not found.");
     }
 
-    // convert values to array for repeateable sections
+    // -----------------------------------------------------------------------
+    // Convert values to array for repeatable sections
+    // -----------------------------------------------------------------------
 
     if (section.repeatable && !Array.isArray(values)) {
       values = Object.values(values).map((item) => JSON.parse(item));
@@ -1343,22 +1615,7 @@ const updateApplicationData = async (applicantId, sectionId, values) => {
     }
 
     // -----------------------------------------------------------------------
-    // Check section status
-    // -----------------------------------------------------------------------
-
-    // if (sectionProgress.status === "locked") {
-    //   throw new ConflictError("This application section is locked.");
-    // }
-
-    // if (sectionProgress.status === "submitted") {
-    //   throw new ConflictError("This application section has already been submitted.");
-    // }
-
-    // if (sectionProgress.status === "approved") {
-    //   throw new ConflictError("This application section has already been approved.");
-    // }
-    // -----------------------------------------------------------------------
-    // Validate repeatable section structure.
+    // Validate repeatable section structure
     // -----------------------------------------------------------------------
 
     if (section.repeatable && !Array.isArray(values)) {
@@ -1366,7 +1623,7 @@ const updateApplicationData = async (applicantId, sectionId, values) => {
     }
 
     // -----------------------------------------------------------------------
-    // Validate non-repeatable section structure.
+    // Validate non-repeatable section structure
     // -----------------------------------------------------------------------
 
     if (
@@ -1379,7 +1636,7 @@ const updateApplicationData = async (applicantId, sectionId, values) => {
     }
 
     // -----------------------------------------------------------------------
-    // Find existing saved values.
+    // Find existing saved values
     // -----------------------------------------------------------------------
 
     const existingValues =
@@ -1392,16 +1649,27 @@ const updateApplicationData = async (applicantId, sectionId, values) => {
       );
 
     // -----------------------------------------------------------------------
-    // Convert values to JSON string.
-    //
-    // The database stores this as a string because of the
-    // MySQL JSON/default-value compatibility issue.
+    // Capture previous values for audit logging
+    // -----------------------------------------------------------------------
+
+    let previousValues = null;
+
+    if (existingValues?.values) {
+      try {
+        previousValues = JSON.parse(existingValues.values);
+      } catch {
+        previousValues = existingValues.values;
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // Convert values to JSON string
     // -----------------------------------------------------------------------
 
     const serializedValues = JSON.stringify(values);
 
     // -----------------------------------------------------------------------
-    // Create or update.
+    // Create or update values
     // -----------------------------------------------------------------------
 
     if (!existingValues) {
@@ -1428,9 +1696,40 @@ const updateApplicationData = async (applicantId, sectionId, values) => {
     }
 
     // -----------------------------------------------------------------------
-    // Return the same structure expected by the frontend.
-    //
-    // Saving a draft does NOT change the section status.
+    // Record audit action
+    // -----------------------------------------------------------------------
+
+    await recordAuditAction({
+      auditContext,
+
+      action: existingValues
+        ? AUDIT_ACTIONS.APPLICATION_SECTION_UPDATED
+        : AUDIT_ACTIONS.APPLICATION_SECTION_CREATED,
+
+      entityType: AUDIT_ENTITY_TYPES.APPLICATION_SECTION,
+
+      entityId: sectionId,
+
+      applicationId: application.id,
+
+      previousData: previousValues,
+
+      newData: values,
+
+      metadata: {
+        applicantId,
+        sectionStatus: sectionProgress.status,
+        repeatable: section.repeatable,
+        operation: existingValues ? "update" : "create",
+      },
+
+      options: {
+        transaction,
+      },
+    });
+
+    // -----------------------------------------------------------------------
+    // Return updated data
     // -----------------------------------------------------------------------
 
     return {

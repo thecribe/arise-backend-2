@@ -591,7 +591,7 @@ const saveSectionDraft = async (
   });
 };
 
-const submitSection = async (applicantId, sectionId) => {
+const submitSection = async (applicantId, sectionId, auditContext) => {
   return sequelize.transaction(async (transaction) => {
     // -----------------------------------------------------------------------
     // Find applicant application
@@ -641,17 +641,17 @@ const submitSection = async (applicantId, sectionId) => {
     // -----------------------------------------------------------------------
 
     if (sectionProgress.status === "locked") {
-      throw new NotFoundError("This application section is locked.");
+      throw new ConflictError("This application section is locked.");
     }
 
     if (sectionProgress.status === "submitted") {
-      throw new NotFoundError(
+      throw new ConflictError(
         "This application section has already been submitted.",
       );
     }
 
     if (sectionProgress.status === "approved") {
-      throw new NotFoundError(
+      throw new ConflictError(
         "This application section has already been approved.",
       );
     }
@@ -692,6 +692,17 @@ const submitSection = async (applicantId, sectionId) => {
     }
 
     // -----------------------------------------------------------------------
+    // Capture previous section state for audit
+    // -----------------------------------------------------------------------
+
+    const previousSectionData = {
+      status: sectionProgress.status,
+      submittedAt: sectionProgress.submitted_at
+        ? new Date(sectionProgress.submitted_at).toISOString()
+        : null,
+    };
+
+    // -----------------------------------------------------------------------
     // Submit section
     // -----------------------------------------------------------------------
 
@@ -707,6 +718,40 @@ const submitSection = async (applicantId, sectionId) => {
         transaction,
       },
     );
+
+    // -----------------------------------------------------------------------
+    // Record section submission audit action
+    // -----------------------------------------------------------------------
+
+    await recordAuditAction({
+      auditContext,
+
+      action: AUDIT_ACTIONS.APPLICATION_SECTION_SUBMITTED,
+
+      entityType: AUDIT_ENTITY_TYPES.APPLICATION_SECTION,
+
+      entityId: sectionId,
+
+      applicationId: application.id,
+
+      previousData: previousSectionData,
+
+      newData: {
+        status: "submitted",
+        submittedAt: submittedAt.toISOString(),
+      },
+
+      metadata: {
+        applicantId,
+        sectionId,
+        phaseId: section.phaseId,
+        operation: "submit",
+      },
+
+      options: {
+        transaction,
+      },
+    });
 
     // -----------------------------------------------------------------------
     // Find the applicant phase this section belongs to
@@ -754,7 +799,7 @@ const submitSection = async (applicantId, sectionId) => {
     );
 
     // -----------------------------------------------------------------------
-    // Determine whether every section has been submitted.
+    // Determine whether every section has been submitted
     // -----------------------------------------------------------------------
 
     const phaseCompleted = phaseSections.every((definition) => {
@@ -767,14 +812,29 @@ const submitSection = async (applicantId, sectionId) => {
 
     // -----------------------------------------------------------------------
     // If all sections are submitted,
-    // mark the phase as submitted.
+    // mark the phase as submitted
     // -----------------------------------------------------------------------
+
+    let phaseStatus = phaseProgress.status;
 
     if (
       phaseCompleted &&
       phaseProgress.status !== "submitted" &&
       phaseProgress.status !== "approved"
     ) {
+      // ---------------------------------------------------------------------
+      // Capture previous phase state for audit
+      // ---------------------------------------------------------------------
+
+      const previousPhaseData = {
+        status: phaseProgress.status,
+        completedAt: phaseProgress.completed_at,
+      };
+
+      // ---------------------------------------------------------------------
+      // Update phase
+      // ---------------------------------------------------------------------
+
       await applicantApplicationRepository.updateApplicationPhase(
         phaseProgress,
         {
@@ -785,7 +845,47 @@ const submitSection = async (applicantId, sectionId) => {
           transaction,
         },
       );
+
+      phaseStatus = "submitted";
+
+      // ---------------------------------------------------------------------
+      // Record phase submission audit action
+      // ---------------------------------------------------------------------
+
+      await recordAuditAction({
+        auditContext,
+
+        action: AUDIT_ACTIONS.APPLICATION_PHASE_SUBMITTED,
+
+        entityType: AUDIT_ENTITY_TYPES.APPLICATION_PHASE,
+
+        entityId: phase.id,
+
+        applicationId: application.id,
+
+        previousData: previousPhaseData,
+
+        newData: {
+          status: "submitted",
+          completedAt: submittedAt.toISOString(),
+        },
+
+        metadata: {
+          applicantId,
+          phaseId: phase.id,
+          triggeredBySectionId: sectionId,
+          operation: "submit",
+        },
+
+        options: {
+          transaction,
+        },
+      });
     }
+
+    // -----------------------------------------------------------------------
+    // Return response
+    // -----------------------------------------------------------------------
 
     return {
       sectionId,
@@ -794,7 +894,7 @@ const submitSection = async (applicantId, sectionId) => {
       values,
       submittedAt,
       phaseId: phase.id,
-      phaseStatus: phaseCompleted ? "submitted" : phaseProgress.status,
+      phaseStatus,
     };
   });
 };

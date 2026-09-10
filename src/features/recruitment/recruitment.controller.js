@@ -31,6 +31,7 @@ import {
   updateSectionReviewCommentSchema,
 } from "./recruitment.validation.js";
 import * as applicantApplicationService from "../applicant-application/applicant-application.service.js";
+import { createAuditContext } from "../../common/audit/audit-context.js";
 
 /**
  * -----------------------------------------------------------------------------
@@ -142,15 +143,15 @@ export async function updateApplicationSectionStatusController(req, res) {
 
   const data = updateApplicationSectionStatusSchema.parse(req.body);
 
+  const auditContext = createAuditContext(req);
+
   const section = await updateApplicationSectionStatus({
     applicationId,
     sectionId,
-
     status: data.status,
-
     comment: data.comment,
-
     managerId: req.user.id,
+    auditContext,
   });
 
   return ApiResponse.success(
@@ -171,12 +172,15 @@ export async function createSectionReviewCommentController(req, res) {
   const { applicationId, sectionId } = req.params;
 
   const data = createSectionReviewCommentSchema.parse(req.body);
+  console.log({ data });
+  const auditContext = createAuditContext(req);
 
   const comment = await createSectionReviewComment({
     applicationId,
     sectionId,
     comment: data.comment,
     managerId: req.user.id,
+    auditContext,
   });
 
   return ApiResponse.success(
@@ -198,12 +202,15 @@ export async function updateSectionReviewCommentController(req, res) {
 
   const data = updateSectionReviewCommentSchema.parse(req.body);
 
+  const auditContext = createAuditContext(req);
+
   const comment = await updateSectionReviewComment({
     applicationId,
     sectionId,
     commentId,
     comment: data.comment,
     managerId: req.user.id,
+    auditContext,
   });
 
   return ApiResponse.success(
@@ -223,11 +230,14 @@ export async function updateSectionReviewCommentController(req, res) {
 export async function deleteSectionReviewCommentController(req, res) {
   const { applicationId, sectionId, commentId } = req.params;
 
+  const auditContext = createAuditContext(req);
+
   await deleteSectionReviewComment({
     applicationId,
     sectionId,
     commentId,
     managerId: req.user.id,
+    auditContext,
   });
 
   return ApiResponse.success(res, null, "Review comment deleted successfully.");
@@ -253,10 +263,13 @@ export async function updateApplicationPhaseStatusController(req, res) {
 
   const data = updateApplicationPhaseStatusSchema.parse(req.body);
 
+  const auditContext = createAuditContext(req);
+
   const phase = await updateApplicationPhaseStatus({
     applicationId,
     phaseId,
     status: data.status,
+    auditContext,
   });
 
   return ApiResponse.success(
@@ -268,13 +281,14 @@ export async function updateApplicationPhaseStatusController(req, res) {
 
 export const saveApplicationForm = async (req, res) => {
   const applicantId = req.user.id;
-
   const { sectionId } = req.params;
+  const auditContext = createAuditContext(req);
 
   const sectionValues = await updateApplicationData(
     applicantId,
     sectionId,
     req.body,
+    auditContext,
   );
 
   return ApiResponse.success(

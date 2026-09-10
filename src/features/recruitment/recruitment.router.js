@@ -30,6 +30,7 @@ import { applicationParseFormdata } from "../../common/middleware/applicationPar
 import { validate } from "../../common/middleware/validate.js";
 import { updateApplicationStatusSchema } from "./application-status.schema.js";
 import { applicationStatusController } from "./application-status.controller.js";
+import { recruitmentComplianceSectionController } from "./compliance.controller.js";
 
 const recruitmentRouter = Router();
 
@@ -279,4 +280,26 @@ recruitmentRouter.get(
   "/application-status/me",
   authenticate,
   applicationStatusController.getApplicantApplicationStatus,
+);
+
+//Recruitment router for complaince section
+
+recruitmentRouter.get(
+  "/compliance/:applicationId/section/:sectionId",
+  authenticate,
+  recruitmentComplianceSectionController.getApplicantComplianceSection,
+);
+
+recruitmentRouter.put(
+  "/compliance/:applicationId/section/:sectionId",
+  authenticate,
+
+  authorize(
+    PERMISSIONS.RECRUITMENT_VIEW.name,
+    PERMISSIONS.RECRUITMENT_APPROVE.name,
+  ),
+  loadUploadUser,
+  createUpload("applications").any(),
+  applicationParseFormdata,
+  recruitmentComplianceSectionController.updateApplicantComplianceSection,
 );
