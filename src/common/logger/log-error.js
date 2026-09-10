@@ -20,9 +20,7 @@ export const logError = (err, req) => {
 
   const userId = req.user?.id || null;
 
-  const requestBody = req.body
-    ? sanitizeLogData(req.body)
-    : null;
+  const requestBody = req.body ? sanitizeLogData(req.body) : null;
 
   logger.error(err.message || "Internal Server Error", {
     timestamp: new Date().toISOString(),
