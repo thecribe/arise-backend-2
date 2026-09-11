@@ -7,6 +7,10 @@ export const AUDIT_ENTITY_TYPES = {
 
   APPLICATION_STATUS: "application_status",
 
+  REFERENCE: "reference",
+  REFERENCE_RESPONSE: "reference_response",
+  REFERENCE_MAIL_STATUS: "reference_mail_status",
+
   STAFF: "staff",
 
   COMPLIANCE: "compliance",

@@ -303,3 +303,23 @@ recruitmentRouter.put(
   applicationParseFormdata,
   recruitmentComplianceSectionController.updateApplicantComplianceSection,
 );
+
+recruitmentRouter.get(
+  "/compliance/manager/:applicationId/section/:sectionId",
+  authenticate,
+  recruitmentComplianceSectionController.getApplicantComplianceSection,
+);
+
+recruitmentRouter.put(
+  "/compliance/manager/:applicationId/section/:sectionId",
+  authenticate,
+
+  authorize(
+    PERMISSIONS.RECRUITMENT_VIEW.name,
+    PERMISSIONS.RECRUITMENT_APPROVE.name,
+  ),
+  loadUploadUser,
+  createUpload("applications").any(),
+  applicationParseFormdata,
+  recruitmentComplianceSectionController.updateManagerComplianceSection,
+);

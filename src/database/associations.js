@@ -1,3 +1,6 @@
+import ApplicantApplicationReference from "./models/ApplicantApplicationReference.js";
+import ApplicantApplicationReferenceMailStatus from "./models/ApplicantApplicationReferenceMailStatus.js";
+import ApplicantApplicationReferenceResponse from "./models/ApplicantApplicationReferenceResponse.js";
 import { ApplicantApplicationSectionManagerValue } from "./models/ApplicantApplicationSectionManagerValue.js";
 import { AuditLog } from "./models/AuditLog.js";
 import {
@@ -185,5 +188,38 @@ AuditLog.belongsTo(ApplicantApplication, {
   foreignKey: "application_id",
   as: "application",
 });
+
+ApplicantApplication.hasMany(ApplicantApplicationReference, {
+  foreignKey: "application_id",
+  as: "references",
+});
+
+ApplicantApplicationReference.belongsTo(ApplicantApplication, {
+  foreignKey: "application_id",
+  as: "application",
+});
+
+ApplicantApplicationReference.hasOne(ApplicantApplicationReferenceResponse, {
+  foreignKey: "reference_id",
+  as: "response",
+});
+
+ApplicantApplicationReferenceResponse.belongsTo(ApplicantApplicationReference, {
+  foreignKey: "reference_id",
+  as: "reference",
+});
+
+ApplicantApplicationReference.hasOne(ApplicantApplicationReferenceMailStatus, {
+  foreignKey: "reference_id",
+  as: "mailStatus",
+});
+
+ApplicantApplicationReferenceMailStatus.belongsTo(
+  ApplicantApplicationReference,
+  {
+    foreignKey: "reference_id",
+    as: "reference",
+  },
+);
 
 export { registerAssociations };
