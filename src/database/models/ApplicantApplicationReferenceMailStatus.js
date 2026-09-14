@@ -18,13 +18,7 @@ ApplicantApplicationReferenceMailStatus.init(
     },
 
     status: {
-      type: DataTypes.ENUM(
-        "Not sent",
-        "Pending",
-        "Received",
-        "Approved",
-        "Rejected",
-      ),
+      type: DataTypes.ENUM("Not sent", "Pending", "Received", "Refused"),
       allowNull: false,
       defaultValue: "Not sent",
     },

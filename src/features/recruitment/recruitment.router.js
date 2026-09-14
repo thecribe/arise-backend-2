@@ -205,8 +205,6 @@ recruitmentRouter.delete(
   deleteSectionReviewCommentController,
 );
 
-export { recruitmentRouter };
-
 /**
  * -----------------------------------------------------------------------------
  * Update application phase status.
@@ -323,3 +321,5 @@ recruitmentRouter.put(
   applicationParseFormdata,
   recruitmentComplianceSectionController.updateManagerComplianceSection,
 );
+
+export { recruitmentRouter };
