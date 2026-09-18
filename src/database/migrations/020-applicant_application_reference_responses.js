@@ -45,7 +45,10 @@ export const up = async ({ context: queryInterface }) => {
         type: DataTypes.TEXT("long"),
         allowNull: true,
       },
-
+      signatureDate: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
       created_at: {
         type: DataTypes.DATE,
         allowNull: false,

@@ -16,6 +16,10 @@ const app = express();
 
 app.use(
   helmet({
+    crossOriginResourcePolicy: {
+      policy: "cross-origin",
+    },
+
     contentSecurityPolicy: {
       directives: {
         frameAncestors: ["'self'", "http://localhost:5173"],
@@ -75,7 +79,11 @@ app.use("/api/v1", apiV1Router);
 //  */
 // app.use(errorHandler);
 
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+app.use(
+  "/uploads",
+
+  express.static(path.join(process.cwd(), "uploads")),
+);
 
 /**
  * Global error handler.

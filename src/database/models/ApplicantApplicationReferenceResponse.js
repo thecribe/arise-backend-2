@@ -47,6 +47,11 @@ ApplicantApplicationReferenceResponse.init(
       allowNull: true,
       field: "referer_signature",
     },
+    signatureDate: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: "signature_date",
+    },
   },
   {
     sequelize,

@@ -518,7 +518,7 @@ const getReferenceResponse = async (applicationId, referenceId) => {
   if (!reference.response) {
     return null;
   }
-  console.log("reference.response", reference.response);
+
   return {
     id: reference.response.id,
     referenceId: reference.response.reference_id,
@@ -532,6 +532,7 @@ const getReferenceResponse = async (applicationId, referenceId) => {
     refererName: reference.response.refererName,
 
     refererSignature: parseJsonValue(reference.response.refererSignature),
+    signatureDate: reference.response.signatureDate,
   };
 };
 
@@ -577,11 +578,11 @@ const saveManagerReferenceResponse = async (
       detailReference: data.detailReference ?? null,
       refererName: data.refererName ?? null,
       refererSignature: serializeJsonValue(data.refererSignature),
+      signatureDate: data.signatureDate ?? null,
     };
 
     let response;
 
-    console.log("existingResponse", existingResponse);
     if (!existingResponse) {
       response = await referenceRepository.createReferenceResponse(payload, {
         transaction,
@@ -628,6 +629,7 @@ const saveManagerReferenceResponse = async (
       detailReference: response.detailReference,
       refererName: response.refererName,
       refererSignature: parseJsonValue(response.refererSignature),
+      signatureDate: response.signatureDate,
     };
   });
 };

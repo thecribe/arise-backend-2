@@ -112,7 +112,7 @@ const getComplianceSection = async (
               .filter(Boolean)
               .join(" "),
           },
-          createdAt: data.created_at,
+          createdAt: data.createdAt,
         };
       }),
 

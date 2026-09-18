@@ -2,6 +2,7 @@ import ApplicantApplicationReference from "./models/ApplicantApplicationReferenc
 import ApplicantApplicationReferenceMailStatus from "./models/ApplicantApplicationReferenceMailStatus.js";
 import ApplicantApplicationReferenceResponse from "./models/ApplicantApplicationReferenceResponse.js";
 import { ApplicantApplicationSectionManagerValue } from "./models/ApplicantApplicationSectionManagerValue.js";
+import { ApplicantApplicationTrainingCertificate } from "./models/ApplicantApplicationTrainingCertificate.js";
 import { AuditLog } from "./models/AuditLog.js";
 import {
   JobType,
@@ -18,6 +19,7 @@ import {
   ApplicationStatusHistory,
   ApplicationSectionReviewComment,
 } from "./models/index.js";
+import { TrainingCertificateRequirement } from "./models/TrainingCertificateRequirement.js";
 
 const registerAssociations = () => {
   /**
@@ -147,79 +149,112 @@ const registerAssociations = () => {
     foreignKey: "application_id",
     as: "application",
   });
-};
-ApplicantApplication.hasMany(ApplicationSectionReviewComment, {
-  foreignKey: "application_id",
-  as: "sectionReviewComments",
-  onDelete: "CASCADE",
-  onUpdate: "CASCADE",
-});
 
-ApplicationSectionReviewComment.belongsTo(ApplicantApplication, {
-  foreignKey: "application_id",
-  as: "application",
-});
+  ApplicantApplication.hasMany(ApplicationSectionReviewComment, {
+    foreignKey: "application_id",
+    as: "sectionReviewComments",
+    onDelete: "CASCADE",
+    onUpdate: "CASCADE",
+  });
 
-ApplicationSectionReviewComment.belongsTo(User, {
-  foreignKey: "created_by",
-  as: "creator",
-});
+  ApplicationSectionReviewComment.belongsTo(ApplicantApplication, {
+    foreignKey: "application_id",
+    as: "application",
+  });
 
-User.hasMany(ApplicationSectionReviewComment, {
-  foreignKey: "created_by",
-  as: "applicationSectionReviewComments",
-});
-User.hasMany(AuditLog, {
-  foreignKey: "user_id",
-  as: "auditLogs",
-});
+  ApplicationSectionReviewComment.belongsTo(User, {
+    foreignKey: "created_by",
+    as: "creator",
+  });
 
-AuditLog.belongsTo(User, {
-  foreignKey: "user_id",
-  as: "user",
-});
+  User.hasMany(ApplicationSectionReviewComment, {
+    foreignKey: "created_by",
+    as: "applicationSectionReviewComments",
+  });
+  User.hasMany(AuditLog, {
+    foreignKey: "user_id",
+    as: "auditLogs",
+  });
 
-ApplicantApplication.hasMany(AuditLog, {
-  foreignKey: "application_id",
-  as: "auditLogs",
-});
+  AuditLog.belongsTo(User, {
+    foreignKey: "user_id",
+    as: "user",
+  });
 
-AuditLog.belongsTo(ApplicantApplication, {
-  foreignKey: "application_id",
-  as: "application",
-});
+  ApplicantApplication.hasMany(AuditLog, {
+    foreignKey: "application_id",
+    as: "auditLogs",
+  });
 
-ApplicantApplication.hasMany(ApplicantApplicationReference, {
-  foreignKey: "application_id",
-  as: "references",
-});
+  AuditLog.belongsTo(ApplicantApplication, {
+    foreignKey: "application_id",
+    as: "application",
+  });
 
-ApplicantApplicationReference.belongsTo(ApplicantApplication, {
-  foreignKey: "application_id",
-  as: "application",
-});
+  ApplicantApplication.hasMany(ApplicantApplicationReference, {
+    foreignKey: "application_id",
+    as: "references",
+  });
 
-ApplicantApplicationReference.hasOne(ApplicantApplicationReferenceResponse, {
-  foreignKey: "reference_id",
-  as: "response",
-});
+  ApplicantApplicationReference.belongsTo(ApplicantApplication, {
+    foreignKey: "application_id",
+    as: "application",
+  });
 
-ApplicantApplicationReferenceResponse.belongsTo(ApplicantApplicationReference, {
-  foreignKey: "reference_id",
-  as: "reference",
-});
-
-ApplicantApplicationReference.hasOne(ApplicantApplicationReferenceMailStatus, {
-  foreignKey: "reference_id",
-  as: "mailStatus",
-});
-
-ApplicantApplicationReferenceMailStatus.belongsTo(
-  ApplicantApplicationReference,
-  {
+  ApplicantApplicationReference.hasOne(ApplicantApplicationReferenceResponse, {
     foreignKey: "reference_id",
-    as: "reference",
-  },
-);
+    as: "response",
+  });
+
+  ApplicantApplicationReferenceResponse.belongsTo(
+    ApplicantApplicationReference,
+    {
+      foreignKey: "reference_id",
+      as: "reference",
+    },
+  );
+
+  ApplicantApplicationReference.hasOne(
+    ApplicantApplicationReferenceMailStatus,
+    {
+      foreignKey: "reference_id",
+      as: "mailStatus",
+    },
+  );
+
+  ApplicantApplicationReferenceMailStatus.belongsTo(
+    ApplicantApplicationReference,
+    {
+      foreignKey: "reference_id",
+      as: "reference",
+    },
+  );
+
+  ApplicantApplicationTrainingCertificate.belongsTo(ApplicantApplication, {
+    foreignKey: "application_id",
+    as: "application",
+  });
+
+  ApplicantApplication.hasMany(ApplicantApplicationTrainingCertificate, {
+    foreignKey: "application_id",
+    as: "trainingCertificates",
+  });
+
+  ApplicantApplicationTrainingCertificate.belongsTo(
+    TrainingCertificateRequirement,
+    {
+      foreignKey: "requirement_id",
+      as: "requirement",
+    },
+  );
+
+  TrainingCertificateRequirement.hasMany(
+    ApplicantApplicationTrainingCertificate,
+    {
+      foreignKey: "requirement_id",
+      as: "trainingCertificates",
+    },
+  );
+};
 
 export { registerAssociations };
