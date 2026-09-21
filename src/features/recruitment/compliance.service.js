@@ -12,7 +12,7 @@ import { NotFoundError } from "../../common/errors/not-found-error.js";
 import { sequelize } from "../../config/database.js";
 import { ConflictError } from "../../common/errors/conflict-error.js";
 
-const ensureApplicationSection = async (
+export const ensureApplicationSection = async (
   applicationId,
   sectionId,
   auditContext,

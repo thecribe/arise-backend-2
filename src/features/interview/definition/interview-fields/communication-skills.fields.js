@@ -1,0 +1,66 @@
+import {
+  FIELD_TYPES,
+  FIELD_WIDTH,
+} from "../../../../application-definition/constants.js";
+
+export const communicationSkillsFields = [
+  {
+    id: "spoken-english-competency",
+    type: FIELD_TYPES.NUMBER,
+    name: "spokenEnglishCompetency",
+    label: "Spoken English Competency",
+    placeholder: "Score from 0 to 5",
+    required: true,
+    min: 0,
+    max: 5,
+    step: 1,
+    helpText: "Assesses clarity, grammar, and pronunciation.",
+    order: 1,
+    width: FIELD_WIDTH.FULL,
+  },
+
+  {
+    id: "listening-skills",
+    type: FIELD_TYPES.NUMBER,
+    name: "listeningSkills",
+    label: "Listening Skills",
+    placeholder: "Score from 0 to 5",
+    required: true,
+    min: 0,
+    max: 5,
+    step: 1,
+    helpText: "Understands and responds to questions clearly.",
+    order: 2,
+    width: FIELD_WIDTH.FULL,
+  },
+
+  {
+    id: "ability-to-explain-instructions",
+    type: FIELD_TYPES.NUMBER,
+    name: "abilityToExplainInstructions",
+    label: "Ability to Explain Instructions",
+    placeholder: "Score from 0 to 5",
+    required: true,
+    min: 0,
+    max: 5,
+    step: 1,
+    helpText: "Communicates processes simply and accurately.",
+    order: 3,
+    width: FIELD_WIDTH.FULL,
+  },
+
+  {
+    id: "empathy-professional-language",
+    type: FIELD_TYPES.NUMBER,
+    name: "empathyProfessionalLanguage",
+    label: "Empathy & Professional Language",
+    placeholder: "Score from 0 to 5",
+    required: true,
+    min: 0,
+    max: 5,
+    step: 1,
+    helpText: "Uses a polite, supportive, and empathetic tone.",
+    order: 4,
+    width: FIELD_WIDTH.FULL,
+  },
+];

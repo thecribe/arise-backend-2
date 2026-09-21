@@ -3,6 +3,7 @@ import ApplicantApplicationReferenceMailStatus from "./models/ApplicantApplicati
 import ApplicantApplicationReferenceResponse from "./models/ApplicantApplicationReferenceResponse.js";
 import { ApplicantApplicationSectionManagerValue } from "./models/ApplicantApplicationSectionManagerValue.js";
 import { ApplicantApplicationTrainingCertificate } from "./models/ApplicantApplicationTrainingCertificate.js";
+import { ApplicantInterview } from "./models/ApplicantInterview.js";
 import { AuditLog } from "./models/AuditLog.js";
 import {
   JobType,
@@ -255,6 +256,26 @@ const registerAssociations = () => {
       as: "trainingCertificates",
     },
   );
+
+  ApplicantInterview.belongsTo(ApplicantApplication, {
+    foreignKey: "application_id",
+    as: "application",
+  });
+
+  ApplicantApplication.hasOne(ApplicantInterview, {
+    foreignKey: "application_id",
+    as: "interview",
+  });
+
+  ApplicantInterview.belongsTo(User, {
+    foreignKey: "interviewer_id",
+    as: "interviewer",
+  });
+
+  User.hasMany(ApplicantInterview, {
+    foreignKey: "interviewer_id",
+    as: "conductedInterviews",
+  });
 };
 
 export { registerAssociations };

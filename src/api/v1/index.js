@@ -8,6 +8,10 @@ import { recruitmentRouter } from "../../features/recruitment/recruitment.router
 import { referenceRouter } from "../../features/reference/reference.router.js";
 import trainingCertificateRouter from "../../features/trainingcertificate/trainingcertificate.router.js";
 import applicantTrainingCertificateRouter from "../../features/trainingcertificate/applicant/applicant-training-certificate.router.js";
+import applicantComplianceRouter from "../../features/compliance/applicant-compliance/forms/applicant-complaince-forms.router.js";
+import referenceApplicantRouter from "../../features/compliance/applicant-compliance/reference/applicant-complaince-reference.route.js";
+import trainingCertificateApplicantRouter from "../../features/compliance/applicant-compliance/compliance/applicant-training-certificate.routes.js";
+import InterviewRouter from "../../features/interview/applicant-interview.routes.js";
 
 const apiV1Router = Router();
 
@@ -15,6 +19,10 @@ apiV1Router.use("/auth", authRouter);
 apiV1Router.use("/job-types", jobTypeRouter);
 apiV1Router.use("/application-definitions", applicationDefinitionRouter);
 apiV1Router.use("/applicant-application", applicantApplicationRouter);
+apiV1Router.use("/applicant-application", applicantComplianceRouter);
+apiV1Router.use("/applicant-application", referenceApplicantRouter);
+apiV1Router.use("/applicant-application", trainingCertificateApplicantRouter);
+apiV1Router.use("/applicant-application", InterviewRouter);
 apiV1Router.use("/dashboard", dashboardRouter);
 apiV1Router.use("/recruitment", recruitmentRouter);
 apiV1Router.use("/references", referenceRouter);
