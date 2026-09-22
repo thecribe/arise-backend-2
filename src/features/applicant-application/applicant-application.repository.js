@@ -38,7 +38,18 @@ const findApplicationByApplicantId = async (applicantId, options = {}) => {
 };
 
 const findApplicationById = async (applicationId, options = {}) => {
-  return ApplicantApplication.findByPk(applicationId, options);
+  return ApplicantApplication.findByPk(applicationId, {
+    ...options,
+    include: [
+      {
+        model: User,
+        as: "applicant",
+        attributes: {
+          exclude: ["password"],
+        },
+      },
+    ],
+  });
 };
 
 const findApplicationPhases = async (applicationId, options = {}) => {

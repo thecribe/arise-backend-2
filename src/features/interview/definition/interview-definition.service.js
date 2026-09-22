@@ -1,11 +1,11 @@
-import interviewInformation from "../interview-information.js";
+import interviewInformation from "./interview-information.js";
 
 const getInterviewDefinition = () => {
   return interviewInformation;
 };
 
 const getInterviewSections = () => {
-  return interviewInformation.sections.sort((a, b) => a.order - b.order);
+  return [...interviewInformation.sections].sort((a, b) => a.order - b.order);
 };
 
 const getInterviewSection = (sectionId) => {
@@ -21,7 +21,7 @@ const getInterviewFields = (sectionId) => {
     return null;
   }
 
-  return section.fields.sort((a, b) => a.order - b.order);
+  return [...section.fields].sort((a, b) => a.order - b.order);
 };
 
 export default {

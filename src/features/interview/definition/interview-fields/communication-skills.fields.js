@@ -7,7 +7,7 @@ export const communicationSkillsFields = [
   {
     id: "spoken-english-competency",
     type: FIELD_TYPES.NUMBER,
-    name: "spokenEnglishCompetency",
+    name: "scores.spokenEnglishCompetency",
     label: "Spoken English Competency",
     placeholder: "Score from 0 to 5",
     required: true,
@@ -16,13 +16,13 @@ export const communicationSkillsFields = [
     step: 1,
     helpText: "Assesses clarity, grammar, and pronunciation.",
     order: 1,
-    width: FIELD_WIDTH.FULL,
+    width: FIELD_WIDTH.HALF,
   },
 
   {
     id: "listening-skills",
     type: FIELD_TYPES.NUMBER,
-    name: "listeningSkills",
+    name: "scores.listeningSkills",
     label: "Listening Skills",
     placeholder: "Score from 0 to 5",
     required: true,
@@ -31,13 +31,13 @@ export const communicationSkillsFields = [
     step: 1,
     helpText: "Understands and responds to questions clearly.",
     order: 2,
-    width: FIELD_WIDTH.FULL,
+    width: FIELD_WIDTH.HALF,
   },
 
   {
     id: "ability-to-explain-instructions",
     type: FIELD_TYPES.NUMBER,
-    name: "abilityToExplainInstructions",
+    name: "scores.abilityToExplainInstructions",
     label: "Ability to Explain Instructions",
     placeholder: "Score from 0 to 5",
     required: true,
@@ -46,13 +46,13 @@ export const communicationSkillsFields = [
     step: 1,
     helpText: "Communicates processes simply and accurately.",
     order: 3,
-    width: FIELD_WIDTH.FULL,
+    width: FIELD_WIDTH.HALF,
   },
 
   {
     id: "empathy-professional-language",
     type: FIELD_TYPES.NUMBER,
-    name: "empathyProfessionalLanguage",
+    name: "scores.empathyProfessionalLanguage",
     label: "Empathy & Professional Language",
     placeholder: "Score from 0 to 5",
     required: true,
@@ -61,6 +61,6 @@ export const communicationSkillsFields = [
     step: 1,
     helpText: "Uses a polite, supportive, and empathetic tone.",
     order: 4,
-    width: FIELD_WIDTH.FULL,
+    width: FIELD_WIDTH.HALF,
   },
 ];

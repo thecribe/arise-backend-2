@@ -1,10 +1,13 @@
-import { FIELD_TYPES, FIELD_WIDTH } from "../../../../application-definition/constants.js";
+import {
+  FIELD_TYPES,
+  FIELD_WIDTH,
+} from "../../../../application-definition/constants.js";
 
 export const knowledgeOfCareFields = [
   {
     id: "understanding-personal-care",
     type: FIELD_TYPES.NUMBER,
-    name: "understandingPersonalCare",
+    name: "scores.understandingPersonalCare",
     label: "Understanding of Personal Care",
     placeholder: "Score from 0 to 5",
     required: true,
@@ -13,13 +16,13 @@ export const knowledgeOfCareFields = [
     step: 1,
     helpText: "Explains the importance of personal hygiene.",
     order: 1,
-    width: FIELD_WIDTH.FULL,
+    width: FIELD_WIDTH.HALF,
   },
 
   {
     id: "handling-mobility-issues",
     type: FIELD_TYPES.NUMBER,
-    name: "handlingMobilityIssues",
+    name: "scores.handlingMobilityIssues",
     label: "Handling Mobility Issues",
     placeholder: "Score from 0 to 5",
     required: true,
@@ -28,13 +31,13 @@ export const knowledgeOfCareFields = [
     step: 1,
     helpText: "Demonstrates knowledge of assisting clients with mobility.",
     order: 2,
-    width: FIELD_WIDTH.FULL,
+    width: FIELD_WIDTH.HALF,
   },
 
   {
     id: "health-safety-awareness",
     type: FIELD_TYPES.NUMBER,
-    name: "healthSafetyAwareness",
+    name: "scores.healthSafetyAwareness",
     label: "Health & Safety Awareness",
     placeholder: "Score from 0 to 5",
     required: true,
@@ -43,13 +46,13 @@ export const knowledgeOfCareFields = [
     step: 1,
     helpText: "Recognizes risks such as falls and infections.",
     order: 3,
-    width: FIELD_WIDTH.FULL,
+    width: FIELD_WIDTH.HALF,
   },
 
   {
     id: "knowledge-of-safeguarding",
     type: FIELD_TYPES.NUMBER,
-    name: "knowledgeOfSafeguarding",
+    name: "scores.knowledgeOfSafeguarding",
     label: "Knowledge of Safeguarding",
     placeholder: "Score from 0 to 5",
     required: true,
@@ -58,13 +61,13 @@ export const knowledgeOfCareFields = [
     step: 1,
     helpText: "Understands confidentiality and abuse reporting.",
     order: 4,
-    width: FIELD_WIDTH.FULL,
+    width: FIELD_WIDTH.HALF,
   },
 
   {
     id: "nutrition-meal-preparation",
     type: FIELD_TYPES.NUMBER,
-    name: "nutritionMealPreparation",
+    name: "scores.nutritionMealPreparation",
     label: "Nutrition & Meal Preparation",
     placeholder: "Score from 0 to 5",
     required: true,
@@ -73,6 +76,6 @@ export const knowledgeOfCareFields = [
     step: 1,
     helpText: "Demonstrates a basic understanding of balanced meals.",
     order: 5,
-    width: FIELD_WIDTH.FULL,
+    width: FIELD_WIDTH.HALF,
   },
 ];

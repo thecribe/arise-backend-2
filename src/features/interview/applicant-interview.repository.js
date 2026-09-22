@@ -1,96 +1,51 @@
 import { ApplicantInterview } from "../../database/models/ApplicantInterview.js";
 
-const parseJson = (value, fallback = {}) => {
-  if (!value) return fallback;
+const parseScores = (scores) => {
+  if (!scores) {
+    return {};
+  }
+
+  if (typeof scores === "object") {
+    return scores;
+  }
 
   try {
-    return JSON.parse(value);
+    return JSON.parse(scores);
   } catch {
-    return fallback;
+    return {};
   }
 };
 
 const formatInterview = (interview) => {
-  if (!interview) return null;
+  if (!interview) {
+    return null;
+  }
 
   const data = interview.toJSON();
 
   return {
     ...data,
-    scores: parseJson(data.scores, {}),
-    notes: parseJson(data.notes, []),
+    scores: parseScores(data.scores),
   };
 };
 
-/**
- * Find an interview by its ID.
- */
 const findInterviewById = async (interviewId, options = {}) => {
-  const interview = await ApplicantInterview.findByPk(interviewId, options);
-
-  return formatInterview(interview);
-};
-
-/**
- * Find an interview by application ID.
- */
-const findInterviewByApplicationId = async (applicationId, options = {}) => {
   const interview = await ApplicantInterview.findOne({
-    where: {
-      application_id: applicationId,
-    },
     ...options,
+    where: {
+      id: interviewId,
+    },
   });
 
   return formatInterview(interview);
 };
-
-/**
- * Create a new interview.
- */
-const createInterview = async (data, options = {}) => {
-  const interview = await ApplicantInterview.create(
-    {
-      ...data,
-      scores:
-        typeof data.scores === "string"
-          ? data.scores
-          : JSON.stringify(data.scores ?? {}),
-
-      notes:
-        typeof data.notes === "string"
-          ? data.notes
-          : JSON.stringify(data.notes ?? []),
+const findInterviewByApplicationId = async (applicationId, options = {}) => {
+  const interview = await ApplicantInterview.findOne({
+    ...options,
+    where: {
+      application_id: applicationId,
     },
-    options,
-  );
-
-  return formatInterview(interview);
-};
-
-/**
- * Update an existing interview.
- */
-const updateInterview = async (interview, data, options = {}) => {
-  const updateData = {
-    ...data,
-  };
-
-  if (updateData.scores !== undefined) {
-    updateData.scores =
-      typeof updateData.scores === "string"
-        ? updateData.scores
-        : JSON.stringify(updateData.scores);
-  }
-
-  if (updateData.notes !== undefined) {
-    updateData.notes =
-      typeof updateData.notes === "string"
-        ? updateData.notes
-        : JSON.stringify(updateData.notes);
-  }
-
-  await interview.update(updateData, options);
+  });
 
   return formatInterview(interview);
 };
@@ -100,17 +55,67 @@ const findInterviewModelByApplicationId = async (
   options = {},
 ) => {
   return ApplicantInterview.findOne({
+    ...options,
     where: {
       application_id: applicationId,
     },
-    ...options,
   });
 };
 
+const createInterview = async (data, options = {}) => {
+  const interview = await ApplicantInterview.create(
+    {
+      application_id: data.applicationId,
+      interviewer_id: data.interviewerId,
+      interviewer_name: data.interviewerName,
+      interview_date: data.interviewDate,
+      scores: JSON.stringify(data.scores),
+      raw_score: data.rawScore,
+      normalized_score: data.normalizedScore,
+      interviewer_signature: data.interviewerSignature ?? null,
+    },
+    options,
+  );
+
+  return formatInterview(interview);
+};
+
+const updateInterview = async (interview, data, options = {}) => {
+  const updateData = {};
+
+  if (data.interviewerName !== undefined) {
+    updateData.interviewer_name = data.interviewerName;
+  }
+
+  if (data.interviewDate !== undefined) {
+    updateData.interview_date = data.interviewDate;
+  }
+
+  if (data.scores !== undefined) {
+    updateData.scores = JSON.stringify(data.scores);
+  }
+
+  if (data.rawScore !== undefined) {
+    updateData.raw_score = data.rawScore;
+  }
+
+  if (data.normalizedScore !== undefined) {
+    updateData.normalized_score = data.normalizedScore;
+  }
+
+  if (data.interviewerSignature !== undefined) {
+    updateData.interviewer_signature = data.interviewerSignature;
+  }
+
+  await interview.update(updateData, options);
+
+  return formatInterview(interview);
+};
+
 export const interviewRepository = {
-  findInterviewById,
   findInterviewByApplicationId,
+  findInterviewModelByApplicationId,
   createInterview,
   updateInterview,
-  findInterviewModelByApplicationId,
+  findInterviewById,
 };

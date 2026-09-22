@@ -4,6 +4,7 @@ import ApplicantApplicationReferenceResponse from "./models/ApplicantApplication
 import { ApplicantApplicationSectionManagerValue } from "./models/ApplicantApplicationSectionManagerValue.js";
 import { ApplicantApplicationTrainingCertificate } from "./models/ApplicantApplicationTrainingCertificate.js";
 import { ApplicantInterview } from "./models/ApplicantInterview.js";
+import { ApplicantInterviewNote } from "./models/ApplicantInterviewNote.js";
 import { AuditLog } from "./models/AuditLog.js";
 import {
   JobType,
@@ -275,6 +276,28 @@ const registerAssociations = () => {
   User.hasMany(ApplicantInterview, {
     foreignKey: "interviewer_id",
     as: "conductedInterviews",
+  });
+
+  ApplicantInterview.hasMany(ApplicantInterviewNote, {
+    foreignKey: "interview_id",
+    as: "notes",
+    onDelete: "CASCADE",
+    hooks: true,
+  });
+
+  ApplicantInterviewNote.belongsTo(ApplicantInterview, {
+    foreignKey: "interview_id",
+    as: "interview",
+  });
+
+  ApplicantInterviewNote.belongsTo(User, {
+    foreignKey: "created_by",
+    as: "creator",
+  });
+
+  User.hasMany(ApplicantInterviewNote, {
+    foreignKey: "created_by",
+    as: "interviewNotes",
   });
 };
 

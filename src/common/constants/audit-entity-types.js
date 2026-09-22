@@ -18,4 +18,6 @@ export const AUDIT_ENTITY_TYPES = {
   TRAINING_CERTIFICATE_REQUIREMENT: "training_certificate_requirement",
   TRAINING_CERTIFICATE: "training_certificate",
   INTERVIEW: "interview",
+
+  INTERVIEW_NOTE: "interview_note",
 };

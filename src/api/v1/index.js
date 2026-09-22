@@ -12,6 +12,8 @@ import applicantComplianceRouter from "../../features/compliance/applicant-compl
 import referenceApplicantRouter from "../../features/compliance/applicant-compliance/reference/applicant-complaince-reference.route.js";
 import trainingCertificateApplicantRouter from "../../features/compliance/applicant-compliance/compliance/applicant-training-certificate.routes.js";
 import InterviewRouter from "../../features/interview/applicant-interview.routes.js";
+import interviewDefinitionRouter from "../../features/interview/definition/interview-definition.routes.js";
+import DocumentsRouter from "../../features/documents/documents.route.js";
 
 const apiV1Router = Router();
 
@@ -34,5 +36,7 @@ apiV1Router.use(
   "/recruitment/training-certificates",
   applicantTrainingCertificateRouter,
 );
+apiV1Router.use("/interview", interviewDefinitionRouter);
+apiV1Router.use("/documents", DocumentsRouter);
 
 export { apiV1Router };

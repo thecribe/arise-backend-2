@@ -1,12 +1,13 @@
 import { createAuditContext } from "../../common/audit/audit-context.js";
 import { ApiResponse } from "../../common/responses/api-response.js";
-import { interviewService } from "./applicant-interview.service.js";
+import interviewService from "./applicant-interview.service.js";
 
 /**
  * --------------------------------------------------------------------------
  * Get Interview By Application ID
  * --------------------------------------------------------------------------
  */
+
 const getInterview = async (req, res, next) => {
   try {
     const { applicationId } = req.params;
@@ -24,17 +25,10 @@ const getInterview = async (req, res, next) => {
   }
 };
 
-/**
- * --------------------------------------------------------------------------
- * Create Interview
- * --------------------------------------------------------------------------
- */
 const createInterview = async (req, res, next) => {
   try {
     const { applicationId } = req.params;
 
-    // Adjust this property if your authentication middleware
-    // stores the authenticated user ID differently.
     const interviewerId = req.user.id;
 
     const auditContext = createAuditContext(req);
@@ -46,7 +40,7 @@ const createInterview = async (req, res, next) => {
       auditContext,
     );
 
-    return ApiResponse.created(
+    return ApiResponse.success(
       res,
       interview,
       "Interview created successfully.",
@@ -56,11 +50,6 @@ const createInterview = async (req, res, next) => {
   }
 };
 
-/**
- * --------------------------------------------------------------------------
- * Update Interview
- * --------------------------------------------------------------------------
- */
 const updateInterview = async (req, res, next) => {
   try {
     const { applicationId } = req.params;

@@ -1,7 +1,9 @@
 import { z } from "zod";
 
-const scoreField = z.coerce
-  .number({ error: "Score is required" })
+const scoreField = z
+  .number({
+    error: "Score is required",
+  })
   .int("Score must be a whole number")
   .min(0, "Minimum score is 0")
   .max(5, "Maximum score is 5");
@@ -24,13 +26,16 @@ const scoresSchema = z.object({
 });
 
 const baseInterviewSchema = z.object({
+  interviewerName: z
+    .string()
+    .trim()
+    .min(2, "Interviewer name must contain at least 2 characters"),
+
   interviewDate: z.string().min(1, "Interview date is required"),
 
   scores: scoresSchema,
 
-  notes: z.array(z.string().min(1, "Note cannot be empty")).default([]),
-
-  interviewerSignature: z.string().optional().nullable(),
+  interviewerSignature: z.any().nullable().optional(),
 });
 
 /**

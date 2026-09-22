@@ -1,45 +1,50 @@
 import { AUDIT_ACTIONS } from "../../common/constants/audit-actions.js";
 import { AUDIT_ENTITY_TYPES } from "../../common/constants/audit-entity-types.js";
+
 import { BadRequestError } from "../../common/errors/bad-request-error.js";
 import { NotFoundError } from "../../common/errors/not-found-error.js";
+
 import { sequelize } from "../../config/database.js";
 import { recordAuditAction } from "../audit/record-audit-action.js";
+
 import { recruitmentRepository } from "../recruitment/recruitment.repository.js";
 import { interviewRepository } from "./applicant-interview.repository.js";
 
-const MAX_SCORE_PER_CRITERION = 5;
-const TOTAL_CRITERIA = 12;
-const MAX_RAW_SCORE = TOTAL_CRITERIA * MAX_SCORE_PER_CRITERION;
+const MAX_RAW_SCORE = 60;
 const MAX_NORMALIZED_SCORE = 50;
 
-const calculateScores = (scores) => {
-  if (!scores || typeof scores !== "object") {
-    throw new BadRequestError("Interview scores are required.");
+const SCORE_KEYS = [
+  "understandingPersonalCare",
+  "handlingMobilityIssues",
+  "healthSafetyAwareness",
+  "knowledgeOfSafeguarding",
+  "nutritionMealPreparation",
+  "spokenEnglishCompetency",
+  "listeningSkills",
+  "abilityToExplainInstructions",
+  "empathyProfessionalLanguage",
+  "timeManagementAwareness",
+  "attitudeWillingnessToLearn",
+  "adaptability",
+];
+
+const calculateScores = (scores = {}) => {
+  const normalizedScores = {};
+
+  for (const key of SCORE_KEYS) {
+    const value = Number(scores[key]);
+
+    if (!Number.isInteger(value) || value < 0 || value > 5) {
+      throw new BadRequestError(
+        `Invalid score for ${key}. Score must be between 0 and 5.`,
+      );
+    }
+
+    normalizedScores[key] = value;
   }
 
-  const scoreValues = Object.values(scores);
-
-  if (scoreValues.length !== TOTAL_CRITERIA) {
-    throw new BadRequestError(
-      `Exactly ${TOTAL_CRITERIA} interview scores are required.`,
-    );
-  }
-
-  const hasInvalidScore = scoreValues.some(
-    (score) =>
-      !Number.isInteger(Number(score)) ||
-      Number(score) < 0 ||
-      Number(score) > MAX_SCORE_PER_CRITERION,
-  );
-
-  if (hasInvalidScore) {
-    throw new BadRequestError(
-      "Each interview score must be a whole number between 0 and 5.",
-    );
-  }
-
-  const rawScore = scoreValues.reduce(
-    (total, score) => total + Number(score),
+  const rawScore = SCORE_KEYS.reduce(
+    (total, key) => total + normalizedScores[key],
     0,
   );
 
@@ -48,21 +53,40 @@ const calculateScores = (scores) => {
   );
 
   return {
+    scores: normalizedScores,
     rawScore,
     normalizedScore,
   };
 };
 
-/**
- * Create interview
- */
+const validateInterviewerName = (interviewerName) => {
+  if (
+    typeof interviewerName !== "string" ||
+    interviewerName.trim().length < 2
+  ) {
+    throw new BadRequestError("A valid interviewer name is required.");
+  }
+
+  return interviewerName.trim();
+};
+
+const validateInterviewDate = (interviewDate) => {
+  if (typeof interviewDate !== "string" || !interviewDate.trim()) {
+    throw new BadRequestError("Interview date is required.");
+  }
+
+  return interviewDate;
+};
+
 const createInterview = async (
   applicationId,
   interviewerId,
   data,
-  auditContext,
+  auditContext = {},
 ) => {
-  return sequelize.transaction(async (transaction) => {
+  const transaction = await sequelize.transaction();
+
+  try {
     const application =
       await recruitmentRepository.findApplicantApplicationByApplicationId(
         applicationId,
@@ -70,13 +94,14 @@ const createInterview = async (
       );
 
     if (!application) {
-      throw new NotFoundError("Applicant application not found.");
+      throw new NotFoundError("Application not found.");
     }
 
     const existingInterview =
-      await interviewRepository.findInterviewByApplicationId(applicationId, {
-        transaction,
-      });
+      await interviewRepository.findInterviewModelByApplicationId(
+        applicationId,
+        { transaction },
+      );
 
     if (existingInterview) {
       throw new BadRequestError(
@@ -84,18 +109,22 @@ const createInterview = async (
       );
     }
 
-    const { rawScore, normalizedScore } = calculateScores(data.scores);
+    const interviewerName = validateInterviewerName(data.interviewerName);
+
+    const interviewDate = validateInterviewDate(data.interviewDate);
+
+    const calculatedScores = calculateScores(data.scores);
 
     const interview = await interviewRepository.createInterview(
       {
-        application_id: applicationId,
-        interviewer_id: interviewerId,
-        interview_date: data.interviewDate,
-        scores: data.scores,
-        raw_score: rawScore,
-        normalized_score: normalizedScore,
-        notes: data.notes ?? [],
-        interviewer_signature: data.interviewerSignature ?? null,
+        applicationId,
+        interviewerId,
+        interviewerName,
+        interviewDate,
+        interviewerSignature: data.interviewerSignature
+          ? JSON.stringify(data.interviewerSignature)
+          : "",
+        ...calculatedScores,
       },
       { transaction },
     );
@@ -107,41 +136,42 @@ const createInterview = async (
       entityId: interview.id,
       metadata: {
         applicationId,
-        interviewerId,
-        rawScore,
-        normalizedScore,
+        rawScore: calculatedScores.rawScore,
+        normalizedScore: calculatedScores.normalizedScore,
       },
       transaction,
     });
 
+    await transaction.commit();
+
     return interview;
-  });
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
 };
 
-/**
- * Get interview by application ID
- */
 const getInterviewByApplicationId = async (applicationId) => {
   const interview =
     await interviewRepository.findInterviewByApplicationId(applicationId);
 
-  if (!interview) {
-    throw new NotFoundError("Interview not found.");
-  }
-
-  return interview;
+  return {
+    ...interview,
+    interviewer_signature: interview.interviewer_signature
+      ? JSON.parse(interview.interviewer_signature)
+      : null,
+  };
 };
 
-/**
- * Update interview
- */
 const updateInterview = async (
   applicationId,
   interviewerId,
   data,
-  auditContext,
+  auditContext = {},
 ) => {
-  return sequelize.transaction(async (transaction) => {
+  const transaction = await sequelize.transaction();
+
+  try {
     const interview =
       await interviewRepository.findInterviewModelByApplicationId(
         applicationId,
@@ -152,41 +182,41 @@ const updateInterview = async (
       throw new NotFoundError("Interview not found.");
     }
 
-    const previousScores =
+    const currentScores =
       typeof interview.scores === "string"
         ? JSON.parse(interview.scores)
         : interview.scores;
 
-    const updatedScores = {
-      ...previousScores,
+    const mergedScores = {
+      ...currentScores,
       ...(data.scores ?? {}),
     };
 
-    const { rawScore, normalizedScore } = calculateScores(updatedScores);
+    const calculatedScores = calculateScores(mergedScores);
 
-    const previousData = interview.toJSON();
+    const updateData = {
+      ...data,
+      ...calculatedScores,
+    };
+
+    if (data.interviewerName !== undefined) {
+      updateData.interviewerName = validateInterviewerName(
+        data.interviewerName,
+      );
+    }
+
+    if (data.interviewDate !== undefined) {
+      updateData.interviewDate = validateInterviewDate(data.interviewDate);
+    }
+    if (data.interviewerSignature !== undefined) {
+      updateData.interviewerSignature = JSON.stringify(
+        data.interviewerSignature,
+      );
+    }
 
     const updatedInterview = await interviewRepository.updateInterview(
       interview,
-      {
-        ...(data.interviewDate !== undefined && {
-          interview_date: data.interviewDate,
-        }),
-
-        scores: updatedScores,
-        raw_score: rawScore,
-        normalized_score: normalizedScore,
-
-        ...(data.notes !== undefined && {
-          notes: data.notes,
-        }),
-
-        ...(data.interviewerSignature !== undefined && {
-          interviewer_signature: data.interviewerSignature,
-        }),
-
-        interviewer_id: interviewerId,
-      },
+      updateData,
       { transaction },
     );
 
@@ -197,21 +227,24 @@ const updateInterview = async (
       entityId: interview.id,
       metadata: {
         applicationId,
-        interviewerId,
-        previousData,
-        updatedData: updatedInterview,
+        updatedBy: interviewerId,
+        rawScore: calculatedScores.rawScore,
+        normalizedScore: calculatedScores.normalizedScore,
       },
       transaction,
     });
 
+    await transaction.commit();
+
     return updatedInterview;
-  });
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
 };
 
-const interviewService = {
+export default {
   createInterview,
   getInterviewByApplicationId,
   updateInterview,
 };
-
-export default interviewService;
