@@ -32,9 +32,26 @@ const getApplicationFormDocument = async (req, res, next) => {
     next(error);
   }
 };
+const getInterviewScoresheetDocument = async (req, res, next) => {
+  try {
+    const { applicationId } = req.params;
+
+    const documentData =
+      await documentsService.getInterviewDocument(applicationId);
+
+    return ApiResponse.success(
+      res,
+      documentData,
+      "Interview scoresheet document data retrieved successfully.",
+    );
+  } catch (error) {
+    next(error);
+  }
+};
 
 const documentsController = {
   getApplicationFormDocument,
+  getInterviewScoresheetDocument,
 };
 
 export default documentsController;

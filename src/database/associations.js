@@ -3,6 +3,7 @@ import ApplicantApplicationReferenceMailStatus from "./models/ApplicantApplicati
 import ApplicantApplicationReferenceResponse from "./models/ApplicantApplicationReferenceResponse.js";
 import { ApplicantApplicationSectionManagerValue } from "./models/ApplicantApplicationSectionManagerValue.js";
 import { ApplicantApplicationTrainingCertificate } from "./models/ApplicantApplicationTrainingCertificate.js";
+import { ApplicantDocument } from "./models/ApplicantDocument.js";
 import { ApplicantInterview } from "./models/ApplicantInterview.js";
 import { ApplicantInterviewNote } from "./models/ApplicantInterviewNote.js";
 import { AuditLog } from "./models/AuditLog.js";
@@ -298,6 +299,16 @@ const registerAssociations = () => {
   User.hasMany(ApplicantInterviewNote, {
     foreignKey: "created_by",
     as: "interviewNotes",
+  });
+
+  ApplicantDocument.belongsTo(ApplicantApplication, {
+    foreignKey: "application_id",
+    as: "application",
+  });
+
+  ApplicantApplication.hasMany(ApplicantDocument, {
+    foreignKey: "application_id",
+    as: "documents",
   });
 };
 

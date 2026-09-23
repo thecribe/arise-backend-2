@@ -14,6 +14,8 @@ import {
   findApplicationSections,
   findSectionValues,
 } from "../applicant-application/applicant-application.repository.js";
+import { interviewRepository } from "../interview/applicant-interview.repository.js";
+import interviewDefinitionService from "../interview/definition/interview-definition.service.js";
 import { referenceRepository } from "../reference/reference.repository.js";
 
 const parseJsonValue = (value, fallback = null) => {
@@ -149,6 +151,186 @@ const getApplicationFormDocumentData = async (applicationId) => {
   };
 };
 
+/**
+ * -----------------------------------------------------------------------------
+ * File: interview-document.service.js
+ *
+ * Description:
+ * Prepares interview data for the Interview Scoresheet PDF.
+ * -----------------------------------------------------------------------------
+ */
+
+/**
+ * Safely converts a value to a number.
+ */
+const toNumber = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const parsedValue = Number(value);
+
+  return Number.isFinite(parsedValue) ? parsedValue : null;
+};
+
+/**
+ * Safely retrieves a nested value using a dot-separated path.
+ *
+ * Example:
+ * scores.spokenEnglishCompetency
+ */
+const getNestedValue = (object, path) => {
+  if (!object || typeof object !== "object") {
+    return null;
+  }
+
+  const normalizedPath = path.startsWith("scores.")
+    ? path.replace("scores.", "")
+    : path;
+
+  return normalizedPath.split(".").reduce((currentValue, key) => {
+    if (
+      currentValue === null ||
+      currentValue === undefined ||
+      typeof currentValue !== "object"
+    ) {
+      return null;
+    }
+
+    return currentValue[key];
+  }, object);
+};
+
+/**
+ * Extracts the applicant's full name.
+ *
+ * Adjust the field names if your User model uses different names.
+ */
+const getApplicantFullName = (applicant) => {
+  if (!applicant) {
+    return null;
+  }
+
+  const firstName = applicant.first_name ?? "";
+  const lastName = applicant.last_name ?? "";
+
+  const fullName = `${firstName} ${lastName}`.trim();
+
+  return fullName || applicant.name || null;
+};
+
+/**
+ * Formats a single interview section.
+ */
+const formatInterviewSection = (section, scores) => {
+  const sortedFields = [...section.fields].sort(
+    (firstField, secondField) => firstField.order - secondField.order,
+  );
+
+  return {
+    id: section.id,
+    title: section.title,
+    description: section.description ?? null,
+    order: section.order,
+
+    fields: sortedFields.map((field) => {
+      const fieldValue = getNestedValue(scores, field.name);
+
+      return {
+        id: field.id,
+        name: field.name,
+        label: field.label,
+        type: field.type,
+
+        description: field.helpText ?? null,
+
+        required: field.required ?? false,
+        min: field.min ?? null,
+        max: field.max ?? null,
+        order: field.order,
+
+        score: toNumber(fieldValue),
+      };
+    }),
+  };
+};
+
+/**
+ * Formats applicant details for the PDF.
+ *
+ * Only expose the applicant details required by the document.
+ */
+const formatApplicant = (applicant) => {
+  if (!applicant) {
+    return null;
+  }
+
+  return {
+    id: applicant.id ?? null,
+    fullName: getApplicantFullName(applicant),
+  };
+};
+
+/**
+ * Retrieves and formats the Interview Scoresheet document.
+ *
+ 
+ */
+const getInterviewDocument = async (applicationId) => {
+  if (!applicationId) {
+    throw new Error("Application ID is required.");
+  }
+
+  const [interview, application] = await Promise.all([
+    interviewRepository.findInterviewByApplicationId(applicationId),
+
+    findApplicationById(applicationId),
+  ]);
+
+  if (!application) {
+    throw new Error("Application not found.");
+  }
+
+  if (!interview) {
+    return null;
+  }
+
+  const sections = interviewDefinitionService.getInterviewSections();
+
+  const formattedSections = sections.map((section) =>
+    formatInterviewSection(section, interview.scores),
+  );
+
+  return {
+    documentType: "interview_scoresheet",
+
+    applicant: formatApplicant(application.applicant),
+
+    interview: {
+      id: interview.id,
+      applicationId: interview.application_id,
+
+      interviewerId: interview.interviewer_id,
+      interviewerName: interview.interviewer_name,
+
+      interviewDate: interview.interview_date,
+
+      interviewerSignature: interview.interviewer_signature
+        ? JSON.parse(interview.interviewer_signature)
+        : null,
+
+      normalizedScore: toNumber(interview.normalized_score),
+
+      totalScore: 50,
+    },
+
+    sections: formattedSections,
+
+    generatedAt: new Date().toISOString(),
+  };
+};
+
 export default {
+  getInterviewDocument,
   getApplicationFormDocumentData,
 };

@@ -14,7 +14,6 @@ export const loadUploadUser = async (req, res, next) => {
 
     if (applicationId) {
       const application = await findApplicationById(applicationId);
-      console.log({ applicationId, application });
       req.applicant = application.applicant;
     }
 
