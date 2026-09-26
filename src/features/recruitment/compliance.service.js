@@ -11,6 +11,7 @@ import { recordAuditAction } from "../audit/record-audit-action.js";
 import { NotFoundError } from "../../common/errors/not-found-error.js";
 import { sequelize } from "../../config/database.js";
 import { ConflictError } from "../../common/errors/conflict-error.js";
+import { COMPLIANCE_FIELDS } from "../compliance/applicant-compliance/forms/forms.js";
 
 export const ensureApplicationSection = async (
   applicationId,
@@ -18,34 +19,62 @@ export const ensureApplicationSection = async (
   auditContext,
   options = {},
 ) => {
+  // Sections that must exist
+  const requiredSectionIds = [
+    sectionId && sectionId,
+    ...COMPLIANCE_FIELDS,
+  ].filter(Boolean);
+
+  // Remove duplicates
+  const uniqueSectionIds = [...new Set(requiredSectionIds)];
+
+  for (const currentSectionId of uniqueSectionIds) {
+    const existingSection = await recruitmentRepository.findApplicationSection({
+      applicationId,
+      sectionId: currentSectionId,
+      options,
+    });
+
+    if (!existingSection) {
+      await createApplicationSection(
+        {
+          application_id: applicationId,
+          section_id: currentSectionId,
+          status: "in_progress",
+        },
+        options,
+      );
+    }
+  }
+
   let section = await recruitmentRepository.findApplicationSection({
     applicationId,
     sectionId,
     options,
   });
 
-  if (section) {
-    return section;
-  }
+  // if (section) {
+  //   return section;
+  // }
 
-  section = await createApplicationSection(
-    {
-      application_id: applicationId,
-      section_id: sectionId,
-      status: "in_progress",
-    },
-    options,
-  );
+  // section = await createApplicationSection(
+  //   {
+  //     application_id: applicationId,
+  //     section_id: sectionId,
+  //     status: "in_progress",
+  //   },
+  //   options,
+  // );
 
   await recordAuditAction({
     auditContext,
     action: AUDIT_ACTIONS.APPLICATION_SECTION_CREATED,
     entityType: AUDIT_ENTITY_TYPES.APPLICATION_SECTION,
-    entityId: section.id,
+    entityId: section ? section.id : "Initialize",
     applicationId,
     newData: {
       section_id: sectionId,
-      status: section.status,
+      status: section ? section.status : "in_progress",
     },
     options,
   });

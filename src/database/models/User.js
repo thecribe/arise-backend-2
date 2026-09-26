@@ -56,6 +56,28 @@ User.init(
       type: DataTypes.UUID,
       allowNull: false,
     },
+    profile_img: {
+      type: DataTypes.TEXT("long"),
+      allowNull: true,
+
+      get() {
+        const value = this.getDataValue("document");
+
+        if (!value) {
+          return null;
+        }
+
+        try {
+          return JSON.parse(value);
+        } catch {
+          return value;
+        }
+      },
+
+      set(value) {
+        this.setDataValue("document", value ? JSON.stringify(value) : null);
+      },
+    },
     is_email_verified: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,

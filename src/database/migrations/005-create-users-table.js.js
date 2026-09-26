@@ -60,7 +60,28 @@ export const up = async ({ context: queryInterface }) => {
       allowNull: false,
       defaultValue: false,
     },
+    profile_img: {
+      type: DataTypes.TEXT("long"),
+      allowNull: true,
 
+      get() {
+        const value = this.getDataValue("document");
+
+        if (!value) {
+          return null;
+        }
+
+        try {
+          return JSON.parse(value);
+        } catch {
+          return value;
+        }
+      },
+
+      set(value) {
+        this.setDataValue("document", value ? JSON.stringify(value) : null);
+      },
+    },
     email_verified_at: {
       type: DataTypes.DATE,
       allowNull: true,

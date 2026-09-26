@@ -3,6 +3,7 @@ import { AUDIT_ENTITY_TYPES } from "../../../../common/constants/audit-entity-ty
 import { NotFoundError } from "../../../../common/errors/not-found-error.js";
 import { sequelize } from "../../../../config/database.js";
 import { recordAuditAction } from "../../../audit/record-audit-action.js";
+import { ensureApplicationSection } from "../../../recruitment/compliance.service.js";
 import { applicantComplianceRepository } from "./applicant-complaince-forms.repository.js";
 
 const EDITABLE_STATUSES = ["in_progress", "rejected"];
@@ -48,7 +49,12 @@ const getApplicantApplication = async (applicantId, options = {}) => {
 /**
  * Validate that a section belongs to the applicant's application.
  */
-const getApplicantSection = async (applicantId, sectionId, options = {}) => {
+const getApplicantSection = async (
+  applicantId,
+  sectionId,
+  options = {},
+  auditContext,
+) => {
   const application = await getApplicantApplication(applicantId, options);
 
   const section =
@@ -71,9 +77,9 @@ const getApplicantSection = async (applicantId, sectionId, options = {}) => {
 /**
  * Retrieve all compliance section statuses.
  */
-const getSections = async (applicantId) => {
+const getSections = async (applicantId, auditContext) => {
   const application = await getApplicantApplication(applicantId);
-
+  await ensureApplicationSection(application.id, null, auditContext);
   return applicantComplianceRepository.findSectionsByApplicationId(
     application.id,
   );
@@ -82,10 +88,12 @@ const getSections = async (applicantId) => {
 /**
  * Retrieve a compliance section with its values and comments.
  */
-const getSection = async (applicantId, sectionId) => {
+const getSection = async (applicantId, sectionId, auditContext) => {
   const { application, section } = await getApplicantSection(
     applicantId,
     sectionId,
+    {},
+    auditContext,
   );
 
   const [values, comments] = await Promise.all([

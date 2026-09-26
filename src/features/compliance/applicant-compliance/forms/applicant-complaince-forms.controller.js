@@ -8,8 +8,11 @@ import { applicantComplianceService } from "./applicant-complaince-forms.service
 const getSections = async (req, res, next) => {
   try {
     const applicantId = req.user.id;
-
-    const sections = await applicantComplianceService.getSections(applicantId);
+    const auditContext = createAuditContext(req);
+    const sections = await applicantComplianceService.getSections(
+      applicantId,
+      auditContext,
+    );
 
     return ApiResponse.success(
       res,
@@ -28,10 +31,11 @@ const getSection = async (req, res, next) => {
   try {
     const applicantId = req.user.id;
     const { sectionId } = req.params;
-
+    const auditContext = createAuditContext(req);
     const section = await applicantComplianceService.getSection(
       applicantId,
       sectionId,
+      auditContext,
     );
 
     return ApiResponse.success(

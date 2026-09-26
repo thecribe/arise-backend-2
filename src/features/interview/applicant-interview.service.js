@@ -157,8 +157,10 @@ const getInterviewByApplicationId = async (applicationId) => {
 
   return {
     ...interview,
-    interviewer_signature: interview.interviewer_signature
-      ? JSON.parse(interview.interviewer_signature)
+    interviewer_signature: interview
+      ? interview.interviewer_signature
+        ? JSON.parse(interview.interviewer_signature)
+        : null
       : null,
   };
 };
