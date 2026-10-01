@@ -14,6 +14,7 @@ import trainingCertificateApplicantRouter from "../../features/compliance/applic
 import InterviewRouter from "../../features/interview/applicant-interview.routes.js";
 import interviewDefinitionRouter from "../../features/interview/definition/interview-definition.routes.js";
 import DocumentsRouter from "../../features/documents/documents.route.js";
+import { userRouter } from "../../features/users/user.routes.js";
 
 const apiV1Router = Router();
 
@@ -28,6 +29,7 @@ apiV1Router.use("/applicant-application", InterviewRouter);
 apiV1Router.use("/dashboard", dashboardRouter);
 apiV1Router.use("/recruitment", recruitmentRouter);
 apiV1Router.use("/references", referenceRouter);
+apiV1Router.use("/users", userRouter);
 apiV1Router.use(
   "/training-certificate-requirements",
   trainingCertificateRouter,

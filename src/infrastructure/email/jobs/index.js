@@ -1,7 +1,5 @@
 import { JOB_TYPES } from "../../../common/constants/job-types.js";
-import { registerHandler } from "../../../infrastructure/jobs/job.handlers.js";
-
-
+import { registerHandler } from "../../jobs/job.handlers.js";
 
 import { emailVerificationHandler } from "./email-verification.handler.js";
 import { resetPasswordHandler } from "./reset-password.handler.js";

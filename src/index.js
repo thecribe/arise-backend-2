@@ -1,7 +1,7 @@
 import { sequelize } from "./config/database.js";
 import { startServer } from "./app/server.js";
 import { registerAssociations } from "./database/associations.js";
-import "./features/auth/jobs/index.js";
+import "./infrastructure/email/jobs/index.js";
 import { startWorker } from "./infrastructure/jobs/job.worker.js";
 
 const bootstrap = async () => {

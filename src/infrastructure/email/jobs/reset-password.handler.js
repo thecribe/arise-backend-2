@@ -1,7 +1,7 @@
 import { env } from "../../../config/env.js";
 
-import { emailService } from "../../../infrastructure/email/email.service.js";
-import { forgotPasswordTemplate } from "../../../infrastructure/email/templates/forgot-password.template.js";
+import { emailService } from "../email.service.js";
+import { forgotPasswordTemplate } from "../templates/forgot-password.template.js";
 
 const resetPasswordHandler = async (payload) => {
   const forgotPasswordUrl = `${env.APP_URL}/reset-password?token=${payload.token}`;

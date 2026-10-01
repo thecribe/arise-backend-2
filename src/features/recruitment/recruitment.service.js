@@ -477,6 +477,7 @@ const getRecruitmentApplicant = async (applicantId) => {
       address: application.applicant.address ?? null,
 
       postcode: application.applicant.postcode ?? null,
+      profile_img: application.applicant.profile_img ?? null,
     },
 
     jobType: application.applicant.jobType

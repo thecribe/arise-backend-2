@@ -2,11 +2,12 @@ import {
   findApplicantBySectionId,
   findApplicationById,
 } from "../../features/applicant-application/applicant-application.repository.js";
+import * as userRepository from "../../features/users/user.repository.js";
 
 export const loadUploadUser = async (req, res, next) => {
   try {
     // const userId = req.user.id;
-    const { sectionId, applicationId } = req.params;
+    const { sectionId, applicationId, applicantId } = req.params;
     if (sectionId) {
       const section = await findApplicantBySectionId(sectionId);
       req.applicant = section.application.applicant;
@@ -15,6 +16,11 @@ export const loadUploadUser = async (req, res, next) => {
     if (applicationId) {
       const application = await findApplicationById(applicationId);
       req.applicant = application.applicant;
+    }
+
+    if (applicantId) {
+      const applicant = await userRepository.findUserProfileById(applicantId);
+      req.applicant = applicant;
     }
 
     next();

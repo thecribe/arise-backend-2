@@ -362,16 +362,9 @@ const findApplicantApplicationById = async (applicantId, options = {}) => {
         model: User,
         as: "applicant",
 
-        attributes: [
-          "id",
-          "first_name",
-          "last_name",
-          "email",
-          "phone_number",
-          "address",
-          "postcode",
-          "job_type_id",
-        ],
+        attributes: {
+          exclude: ["password"],
+        },
 
         include: [
           {

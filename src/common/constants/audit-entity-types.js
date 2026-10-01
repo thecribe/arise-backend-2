@@ -22,4 +22,5 @@ export const AUDIT_ENTITY_TYPES = {
   INTERVIEW_NOTE: "interview_note",
 
   APPLICANT_DOCUMENT: "applicant_document",
+  USER: "user",
 };

@@ -61,7 +61,7 @@ User.init(
       allowNull: true,
 
       get() {
-        const value = this.getDataValue("document");
+        const value = this.getDataValue("profile_img");
 
         if (!value) {
           return null;
@@ -75,7 +75,7 @@ User.init(
       },
 
       set(value) {
-        this.setDataValue("document", value ? JSON.stringify(value) : null);
+        this.setDataValue("profile_img", value ? JSON.stringify(value) : null);
       },
     },
     is_email_verified: {
