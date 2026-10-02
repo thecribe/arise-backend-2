@@ -321,5 +321,23 @@ recruitmentRouter.put(
   applicationParseFormdata,
   recruitmentComplianceSectionController.updateManagerComplianceSection,
 );
+recruitmentRouter.post(
+  "/compliance/:applicationId/verify-dbs",
+  authenticate,
+  authorize(
+    PERMISSIONS.RECRUITMENT_VIEW.name,
+    PERMISSIONS.RECRUITMENT_APPROVE.name,
+  ),
+  recruitmentComplianceSectionController.verifyDBS,
+);
+recruitmentRouter.get(
+  "/compliance/:applicationId/verify-rtw",
+  // authenticate,
+  // authorize(
+  //   PERMISSIONS.RECRUITMENT_VIEW.name,
+  //   PERMISSIONS.RECRUITMENT_APPROVE.name,
+  // ),
+  recruitmentComplianceSectionController.verifyRTW,
+);
 
 export { recruitmentRouter };

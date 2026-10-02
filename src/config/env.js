@@ -43,6 +43,7 @@ const envSchema = z.object({
   UPLOAD_PATH: z.string(),
 
   LOG_LEVEL: z.string(),
+  RTW_API: z.string(),
 });
 
 const env = envSchema.parse(process.env);

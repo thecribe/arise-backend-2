@@ -12,6 +12,9 @@ import { NotFoundError } from "../../common/errors/not-found-error.js";
 import { sequelize } from "../../config/database.js";
 import { ConflictError } from "../../common/errors/conflict-error.js";
 import { COMPLIANCE_FIELDS } from "../compliance/applicant-compliance/forms/forms.js";
+import { BadRequestError } from "../../common/errors/bad-request-error.js";
+import { formatDbsResponse } from "../../common/utils/dbs-xml-parser.js";
+import { env } from "../../config/env.js";
 
 export const ensureApplicationSection = async (
   applicationId,
@@ -312,8 +315,112 @@ const updateComplianceManagerSectionData = async (
   });
 };
 
+const verifyDbsCompliance = async (
+  applicationId,
+  values,
+  auditContext = {},
+) => {
+  const { disclosureNumber, dateOfBirth, surname } = values;
+
+  const canVerifyDbs = [disclosureNumber, dateOfBirth, surname].every(
+    (value) => typeof value === "string" && value.trim().length > 0,
+  );
+
+  if (!canVerifyDbs) {
+    throw new NotFoundError("Some of the required details not available");
+  }
+
+  const url = new URL(
+    `https://secure.crbonline.gov.uk/crsc/api/status/${encodeURIComponent(
+      disclosureNumber.trim(),
+    )}`,
+  );
+
+  const [year, month, day] = dateOfBirth.trim().split("-");
+
+  url.search = new URLSearchParams({
+    dateOfBirth: `${day}/${month}/${year}`,
+    surname: surname.trim().toUpperCase(),
+    hasAgreedTermsAndConditions: "true",
+    organisationName: "Arise Nursing",
+    employeeSurname: "Oteri",
+    employeeForename: "Layo",
+  }).toString();
+
+  try {
+    const response = await fetch(url.toString(), {
+      method: "GET",
+    });
+
+    const responseText = await response.text();
+
+    if (!response.ok) {
+      throw new BadRequestError(
+        `DBS verification failed with status ${response.status}`,
+      );
+    }
+
+    const data = formatDbsResponse(responseText);
+
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+const verifyRTWCompliance = async (
+  applicationId,
+  values,
+  auditContext = {},
+) => {
+  // const { shareCode, dateOfBirth } = values;
+
+  // const canVerifyDbs = [shareCode, dateOfBirth].every(
+  //   (value) => typeof value === "string" && value.trim().length > 0,
+  // );
+
+  // if (!canVerifyDbs) {
+  //   throw new NotFoundError("Some of the required details not available");
+  // }
+
+  // const [year, month, day] = dateOfBirth.trim().split("-");
+
+  try {
+    const res = await fetch(
+      "https://checksharecode.co.uk/api/check/right-to-work",
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${env.RTW_API}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          share_code: "WRCMX389J",
+          date_of_birth: "1999-04-24", // YYYY-MM-DD
+          company_name: "Arise Nursing",
+        }),
+      },
+    );
+
+    const result = await res.json();
+
+    if (!res.ok) {
+      throw new BadRequestError(
+        `${result.error.code}: ${result.error.message}`,
+      );
+    }
+
+    // const data = formatDbsResponse(responseText);
+
+    return result;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export {
   getComplianceSection,
   updateComplianceSectionData,
   updateComplianceManagerSectionData,
+  verifyDbsCompliance,
+  verifyRTWCompliance,
 };

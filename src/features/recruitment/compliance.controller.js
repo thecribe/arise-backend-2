@@ -5,6 +5,8 @@ import {
   getComplianceSection,
   updateComplianceManagerSectionData,
   updateComplianceSectionData,
+  verifyDbsCompliance,
+  verifyRTWCompliance,
 } from "./compliance.service.js";
 
 const getApplicantComplianceSection = async (req, res) => {
@@ -59,8 +61,41 @@ const updateManagerComplianceSection = async (req, res) => {
     "Application compliance section updated successfully.",
   );
 };
+
+const verifyDBS = async (req, res) => {
+  const { applicationId } = req.params;
+  const auditContext = createAuditContext(req);
+  const dbsDetails = await verifyDbsCompliance(
+    applicationId,
+    req.body,
+    auditContext,
+  );
+
+  return ApiResponse.success(
+    res,
+    dbsDetails,
+    "Application Dbs verify successfully.",
+  );
+};
+const verifyRTW = async (req, res) => {
+  const { applicationId } = req.params;
+  const auditContext = createAuditContext(req);
+  const rtwDetails = await verifyRTWCompliance(
+    applicationId,
+    req.body,
+    auditContext,
+  );
+
+  return ApiResponse.success(
+    res,
+    rtwDetails,
+    "Application Dbs verify successfully.",
+  );
+};
 export const recruitmentComplianceSectionController = {
   getApplicantComplianceSection,
   updateApplicantComplianceSection,
   updateManagerComplianceSection,
+  verifyDBS,
+  verifyRTW,
 };
