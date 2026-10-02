@@ -372,17 +372,17 @@ const verifyRTWCompliance = async (
   values,
   auditContext = {},
 ) => {
-  // const { shareCode, dateOfBirth } = values;
+  const { shareCode, dateOfBirth } = values;
 
-  // const canVerifyDbs = [shareCode, dateOfBirth].every(
-  //   (value) => typeof value === "string" && value.trim().length > 0,
-  // );
+  const canVerifyDbs = [shareCode, dateOfBirth].every(
+    (value) => typeof value === "string" && value.trim().length > 0,
+  );
 
-  // if (!canVerifyDbs) {
-  //   throw new NotFoundError("Some of the required details not available");
-  // }
+  if (!canVerifyDbs) {
+    throw new NotFoundError("Some of the required details not available");
+  }
 
-  // const [year, month, day] = dateOfBirth.trim().split("-");
+  const [year, month, day] = dateOfBirth.trim().split("-");
 
   try {
     const res = await fetch(
@@ -394,8 +394,8 @@ const verifyRTWCompliance = async (
           "content-type": "application/json",
         },
         body: JSON.stringify({
-          share_code: "WRCMX389J",
-          date_of_birth: "1999-04-24", // YYYY-MM-DD
+          share_code: shareCode.replace(/\s+/g, ""),
+          date_of_birth: `${year}-${month}-${day}`,
           company_name: "Arise Nursing",
         }),
       },

@@ -330,13 +330,13 @@ recruitmentRouter.post(
   ),
   recruitmentComplianceSectionController.verifyDBS,
 );
-recruitmentRouter.get(
-  "/compliance/:applicationId/verify-rtw",
-  // authenticate,
-  // authorize(
-  //   PERMISSIONS.RECRUITMENT_VIEW.name,
-  //   PERMISSIONS.RECRUITMENT_APPROVE.name,
-  // ),
+recruitmentRouter.post(
+  "/compliance/:applicationId/verify-right-to-work",
+  authenticate,
+  authorize(
+    PERMISSIONS.RECRUITMENT_VIEW.name,
+    PERMISSIONS.RECRUITMENT_APPROVE.name,
+  ),
   recruitmentComplianceSectionController.verifyRTW,
 );
 
