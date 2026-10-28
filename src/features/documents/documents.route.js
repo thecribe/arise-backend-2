@@ -127,4 +127,11 @@ DocumentsRouter.delete(
   applicantDocumentController.deleteApplicantDocument,
 );
 
+DocumentsRouter.get(
+  "/:applicationId/compliance-summary",
+  authenticate,
+  authorize(PERMISSIONS.APPLICATION_VIEW.name),
+  documentsController.getComplianceSummaryDocument,
+);
+
 export default DocumentsRouter;

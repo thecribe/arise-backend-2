@@ -8,6 +8,7 @@
  */
 
 import { NotFoundError } from "../../common/errors/not-found-error.js";
+import { sequelize } from "../../config/database.js";
 
 import {
   findApplicationById,
@@ -17,6 +18,7 @@ import {
 import { interviewRepository } from "../interview/applicant-interview.repository.js";
 import interviewDefinitionService from "../interview/definition/interview-definition.service.js";
 import { referenceRepository } from "../reference/reference.repository.js";
+import documentsRepository from "./documents.repository.js";
 
 const parseJsonValue = (value, fallback = null) => {
   if (value === null || value === undefined || value === "") {
@@ -330,7 +332,239 @@ const getInterviewDocument = async (applicationId) => {
   };
 };
 
+const COMPLIANCE_SECTION_IDS = {
+  identityCompliance: "identity-compliance",
+  rightToWork: "right-to-work",
+  dbs: "dbs",
+  professionalMemberships: "professional-memberships",
+};
+
+const parseSectionValues = (record) => {
+  if (!record) {
+    return {};
+  }
+
+  const rawValues = record.values;
+
+  if (!rawValues) {
+    return {};
+  }
+
+  if (typeof rawValues === "object") {
+    return rawValues;
+  }
+
+  try {
+    return JSON.parse(rawValues);
+  } catch {
+    return {};
+  }
+};
+
+const toPlainObject = (record) => {
+  if (!record) {
+    return null;
+  }
+
+  return typeof record.toJSON === "function" ? record.toJSON() : { ...record };
+};
+
+const getSectionValuesMap = (records = []) => {
+  return records.reduce((result, record) => {
+    result[record.section_id] = parseSectionValues(record);
+    return result;
+  }, {});
+};
+
+const getComplianceSectionStatusMap = (sections = []) => {
+  return sections.reduce((result, section) => {
+    result[section.sectionId ?? section.section_id] =
+      section.status ?? "not_started";
+
+    return result;
+  }, {});
+};
+
+const getComplianceSummaryDocumentData = async (applicationId) => {
+  return sequelize.transaction(async (transaction) => {
+    const application = await findApplicationById(applicationId);
+
+    if (!application) {
+      throw new NotFoundError("Application not found.");
+    }
+
+    const [
+      applicationSections,
+      applicantSectionRecords,
+      managerSectionRecords,
+      certificateRecords,
+      requirementRecords,
+      referenceRecords,
+    ] = await Promise.all([
+      findApplicationSections(applicationId),
+      documentsRepository.findApplicantSectionValues(
+        applicationId,
+        Object.values(COMPLIANCE_SECTION_IDS),
+        transaction,
+      ),
+      documentsRepository.findManagerSectionValues(
+        applicationId,
+        Object.values(COMPLIANCE_SECTION_IDS),
+        transaction,
+      ),
+      documentsRepository.findTrainingCertificatesByApplicationId(
+        applicationId,
+        transaction,
+      ),
+      documentsRepository.findActiveTrainingCertificateRequirements(
+        transaction,
+      ),
+      documentsRepository.findReferencesByApplicationId(
+        applicationId,
+        transaction,
+      ),
+    ]);
+
+    const referenceIds = referenceRecords.map((reference) => reference.id);
+
+    const referenceResponseRecords =
+      await documentsRepository.findReferenceResponsesByReferenceIds(
+        referenceIds,
+        transaction,
+      );
+
+    const applicantValuesMap = getSectionValuesMap(applicantSectionRecords);
+    const managerValuesMap = getSectionValuesMap(managerSectionRecords);
+    const sectionStatusMap = getComplianceSectionStatusMap(applicationSections);
+
+    const certificates = certificateRecords.map((record) =>
+      toPlainObject(record),
+    );
+
+    const requirements = requirementRecords.map((record) =>
+      toPlainObject(record),
+    );
+
+    const uploadedRequirementIds = new Set(
+      certificates
+        .map((certificate) => certificate.requirement_id)
+        .filter(Boolean)
+        .map(String),
+    );
+
+    const missingMandatoryRequirements = requirements
+      .filter(
+        (requirement) => !uploadedRequirementIds.has(String(requirement.id)),
+      )
+      .map((requirement) => ({
+        id: requirement.id,
+        name: requirement.name,
+        description: requirement.description,
+        status: "missing",
+      }));
+
+    const responsesByReferenceId = new Map();
+
+    for (const responseRecord of referenceResponseRecords) {
+      const response = toPlainObject(responseRecord);
+      const key = String(response.referenceId ?? response.reference_id);
+
+      if (!responsesByReferenceId.has(key)) {
+        responsesByReferenceId.set(key, []);
+      }
+
+      responsesByReferenceId.get(key).push(response);
+    }
+
+    const references = referenceRecords.map((referenceRecord) => {
+      const reference = toPlainObject(referenceRecord);
+      const referenceId = String(reference.id);
+      const responses = responsesByReferenceId.get(referenceId) ?? [];
+
+      return {
+        ...reference,
+        responseStatus: responses.length > 0 ? "received" : "pending",
+        responses,
+      };
+    });
+
+    const applicant = toPlainObject(application.applicant);
+
+    return {
+      documentType: "compliance_summary",
+      generatedAt: new Date().toISOString(),
+
+      application: {
+        id: application.id,
+        status: application.status,
+        submittedAt: application.submittedAt ?? application.submitted_at,
+      },
+
+      applicant: sanitizeApplicant(applicant),
+
+      sections: {
+        identityCompliance: {
+          sectionId: COMPLIANCE_SECTION_IDS.identityCompliance,
+          status:
+            sectionStatusMap[COMPLIANCE_SECTION_IDS.identityCompliance] ??
+            "not_started",
+          values:
+            applicantValuesMap[COMPLIANCE_SECTION_IDS.identityCompliance] ?? {},
+        },
+
+        rightToWork: {
+          sectionId: COMPLIANCE_SECTION_IDS.rightToWork,
+          status:
+            sectionStatusMap[COMPLIANCE_SECTION_IDS.rightToWork] ??
+            "not_started",
+          applicantValues:
+            applicantValuesMap[COMPLIANCE_SECTION_IDS.rightToWork] ?? {},
+          managerValues:
+            managerValuesMap[COMPLIANCE_SECTION_IDS.rightToWork] ?? {},
+        },
+
+        dbs: {
+          sectionId: COMPLIANCE_SECTION_IDS.dbs,
+          status: sectionStatusMap[COMPLIANCE_SECTION_IDS.dbs] ?? "not_started",
+          managerValues: managerValuesMap[COMPLIANCE_SECTION_IDS.dbs] ?? {},
+        },
+
+        professionalMemberships: {
+          sectionId: COMPLIANCE_SECTION_IDS.professionalMemberships,
+          status:
+            sectionStatusMap[COMPLIANCE_SECTION_IDS.professionalMemberships] ??
+            "not_started",
+          values:
+            applicantValuesMap[
+              COMPLIANCE_SECTION_IDS.professionalMemberships
+            ] ?? {},
+        },
+      },
+
+      trainingCertificates: {
+        uploaded: certificates,
+        missingMandatoryRequirements,
+      },
+
+      references,
+
+      summary: {
+        uploadedCertificateCount: certificates.length,
+        missingMandatoryCertificateCount: missingMandatoryRequirements.length,
+        totalReferences: references.length,
+        receivedReferenceResponses: references.filter(
+          (reference) => reference.responseStatus === "received",
+        ).length,
+        pendingReferenceResponses: references.filter(
+          (reference) => reference.responseStatus === "pending",
+        ).length,
+      },
+    };
+  });
+};
+
 export default {
   getInterviewDocument,
   getApplicationFormDocumentData,
+  getComplianceSummaryDocumentData,
 };

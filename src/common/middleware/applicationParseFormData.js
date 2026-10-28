@@ -140,7 +140,6 @@ export const applicationParseFormdata = (req, res, next) => {
      */
 
     req.body = cleanBody;
-
     next();
   } catch (error) {
     next(error);

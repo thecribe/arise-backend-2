@@ -6,7 +6,15 @@ function createUpload(baseDirectory) {
   const storage = multer.diskStorage({
     destination: function (req, file, cb) {
       try {
-        const user = req.applicant;
+        const user = {
+          ...req.applicant,
+          first_name: req.applicant.firstName
+            ? req.applicant.firstName
+            : req.applicant.first_name,
+          last_name: req.applicant.lastName
+            ? req.applicant.lastName
+            : req.applicant.last_name,
+        };
 
         if (!user) {
           return cb(new Error("Upload user not available"));

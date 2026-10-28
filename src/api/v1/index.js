@@ -15,6 +15,10 @@ import InterviewRouter from "../../features/interview/applicant-interview.routes
 import interviewDefinitionRouter from "../../features/interview/definition/interview-definition.routes.js";
 import DocumentsRouter from "../../features/documents/documents.route.js";
 import { userRouter } from "../../features/users/user.routes.js";
+import DeclarationsRouter from "../../features/declarations/declarations.routes.js";
+import ApplicantDeclarationsRouter from "../../features/declarations/applicant-declarations.route.js";
+import generalComplianceRouter from "../../features/compliance/general-compliance.routes.js";
+import settingsRouter from "../../features/settings/settings.routes.js";
 
 const apiV1Router = Router();
 
@@ -26,6 +30,7 @@ apiV1Router.use("/applicant-application", applicantComplianceRouter);
 apiV1Router.use("/applicant-application", referenceApplicantRouter);
 apiV1Router.use("/applicant-application", trainingCertificateApplicantRouter);
 apiV1Router.use("/applicant-application", InterviewRouter);
+apiV1Router.use("/applicant-application", ApplicantDeclarationsRouter);
 apiV1Router.use("/dashboard", dashboardRouter);
 apiV1Router.use("/recruitment", recruitmentRouter);
 apiV1Router.use("/references", referenceRouter);
@@ -40,5 +45,8 @@ apiV1Router.use(
 );
 apiV1Router.use("/interview", interviewDefinitionRouter);
 apiV1Router.use("/documents", DocumentsRouter);
+apiV1Router.use("/declarations", DeclarationsRouter);
+apiV1Router.use("/compliance", generalComplianceRouter);
+apiV1Router.use("/settings", settingsRouter);
 
 export { apiV1Router };

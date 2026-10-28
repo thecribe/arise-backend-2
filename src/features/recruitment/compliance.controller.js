@@ -79,7 +79,6 @@ const verifyDBS = async (req, res) => {
 };
 const verifyRTW = async (req, res) => {
   const { applicationId } = req.params;
-  console.log({ applicationId, body: req.body });
   const auditContext = createAuditContext(req);
   const rtwDetails = await verifyRTWCompliance(
     applicationId,

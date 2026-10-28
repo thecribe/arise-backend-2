@@ -49,9 +49,27 @@ const getInterviewScoresheetDocument = async (req, res, next) => {
   }
 };
 
+const getComplianceSummaryDocument = async (req, res, next) => {
+  try {
+    const { applicationId } = req.params;
+
+    const documentData =
+      await documentsService.getComplianceSummaryDocumentData(applicationId);
+
+    return ApiResponse.success(
+      res,
+      documentData,
+      "Compliance summary document data retrieved successfully.",
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 const documentsController = {
   getApplicationFormDocument,
   getInterviewScoresheetDocument,
+  getComplianceSummaryDocument,
 };
 
 export default documentsController;

@@ -23,4 +23,8 @@ export const AUDIT_ENTITY_TYPES = {
 
   APPLICANT_DOCUMENT: "applicant_document",
   USER: "user",
+  APPLICANT_DECLARATION: "applicant_declaration",
+
+  //Settings
+  GENERAL_SETTINGS: "general_settings",
 };

@@ -13,6 +13,7 @@ import { ApplicantApplicationSection } from "./ApplicantApplicationSection.js";
 import { ApplicantApplicationSectionValue } from "./ApplicantApplicationSectionValue.js";
 import { ApplicationStatusHistory } from "./ApplicationStatusHistory.js";
 import { ApplicationSectionReviewComment } from "./ApplicationSectionReviewComment.js";
+import { GeneralSettings } from "./GeneralSettings.js";
 
 export {
   User,
@@ -29,4 +30,5 @@ export {
   ApplicantApplicationSectionValue,
   ApplicationStatusHistory,
   ApplicationSectionReviewComment,
+  GeneralSettings,
 };

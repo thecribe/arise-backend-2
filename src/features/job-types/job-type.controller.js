@@ -27,7 +27,7 @@ const getAll = asyncHandler(async (req, res) => {
 const create = asyncHandler(async (req, res) => {
   const jobType = await jobTypeService.create(req.body);
 
-  return ApiResponse.created(
+  return ApiResponse.success(
     res,
     {
       jobType,
