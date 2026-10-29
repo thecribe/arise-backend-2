@@ -9,6 +9,7 @@ import {
   getApplicationStatus,
   updateApplicationStatus,
   getUserProfileController,
+  updateUserJobTypeController,
 } from "./user.controller.js";
 import { authenticate } from "../../common/middleware/authenticate.js";
 import { PERMISSIONS } from "../../common/constants/permissions.js";
@@ -61,6 +62,15 @@ router.patch(
   authenticate,
   authorize(PERMISSIONS.STAFF_VIEW.name),
   updateUserPasswordController,
+);
+/**
+ * Update user JOb type.
+ */
+router.patch(
+  "/:applicantId/job-type",
+  authenticate,
+  authorize(PERMISSIONS.STAFF_VIEW.name),
+  updateUserJobTypeController,
 );
 
 /**

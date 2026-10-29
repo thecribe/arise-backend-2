@@ -79,7 +79,6 @@ const updateUserProfile = async (applicantId, values, auditContext) => {
 
     const previousData = {};
 
-    console.log({ profileValues });
     for (const key of Object.keys(profileValues)) {
       previousData[key] = user.get(key);
     }
@@ -95,6 +94,50 @@ const updateUserProfile = async (applicantId, values, auditContext) => {
       entityId: applicantId,
       previousData,
       newData: profileValues,
+      metadata: {
+        applicantId,
+      },
+      options: {
+        transaction,
+      },
+    });
+
+    return userRepository.findUserProfileById(applicantId, {
+      transaction,
+    });
+  });
+};
+/**
+ * Update applicant job type.
+ */
+const updateUserJobType = async (applicantId, values, auditContext) => {
+  return sequelize.transaction(async (transaction) => {
+    const user = await userRepository.findUserById(applicantId, {
+      transaction,
+    });
+
+    if (!user) {
+      throw new NotFoundError("Applicant not found.");
+    }
+    const { job_type_id } = values;
+
+    const previousData = user.job_type_id ? user.job_type_id : null;
+
+    await userRepository.updateUserProfile(
+      applicantId,
+      { job_type_id },
+      {
+        transaction,
+      },
+    );
+
+    await recordAuditAction({
+      auditContext,
+      action: AUDIT_ACTIONS.USER_PROFILE_UPDATED,
+      entityType: AUDIT_ENTITY_TYPES.USER,
+      entityId: applicantId,
+      previousData,
+      newData: { job_type_id },
       metadata: {
         applicantId,
       },
@@ -566,4 +609,5 @@ export {
   updateApplicationState,
   updateApplicantApplicationStatus,
   updateUserRole,
+  updateUserJobType,
 };

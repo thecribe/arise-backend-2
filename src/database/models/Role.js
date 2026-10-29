@@ -19,6 +19,11 @@ Role.init(
     },
 
     description: DataTypes.STRING,
+    is_system: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
     sequelize,

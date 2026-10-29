@@ -9,6 +9,7 @@ import {
   updateUserAccountStatus,
   updateUserRole,
   getUserProfile,
+  updateUserJobType,
 } from "./user.service.js";
 import {
   updateUserAccountStatusSchema,
@@ -41,6 +42,18 @@ export async function updateUserProfileController(req, res) {
   const user = await updateUserProfile(applicantId, data, auditContext);
 
   return ApiResponse.success(res, user, "User profile updated successfully.");
+}
+/**
+ * Update user Jobtype.
+ */
+export async function updateUserJobTypeController(req, res) {
+  const { applicantId } = req.params;
+
+  const auditContext = createAuditContext(req);
+
+  const user = await updateUserJobType(applicantId, req.body, auditContext);
+
+  return ApiResponse.success(res, user, "User job type updated successfully.");
 }
 
 /**

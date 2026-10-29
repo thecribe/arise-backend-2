@@ -18,7 +18,11 @@ export const up = async ({ context: queryInterface }) => {
       type: DataTypes.STRING(255),
       allowNull: true,
     },
-
+    is_system: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
     created_at: {
       type: DataTypes.DATE,
       allowNull: false,

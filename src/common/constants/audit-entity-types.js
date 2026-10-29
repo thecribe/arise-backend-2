@@ -27,4 +27,5 @@ export const AUDIT_ENTITY_TYPES = {
 
   //Settings
   GENERAL_SETTINGS: "general_settings",
+  ROLE: "role",
 };

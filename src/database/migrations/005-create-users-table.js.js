@@ -36,7 +36,7 @@ export const up = async ({ context: queryInterface }) => {
 
     address: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: true,
     },
 
     postcode: {

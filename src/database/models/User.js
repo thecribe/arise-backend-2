@@ -41,7 +41,7 @@ User.init(
 
     address: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: true,
     },
 
     postcode: {
