@@ -1,9 +1,7 @@
 import crypto from "crypto";
 
 import { sequelize } from "../../config/database.js";
-
 import { authRepository } from "./auth.repository.js";
-
 import { TOKEN_TYPES } from "../../common/constants/token-types.js";
 import { tokenService } from "../../common/services/token.service.js";
 import { jobService } from "../../infrastructure/jobs/job.service.js";

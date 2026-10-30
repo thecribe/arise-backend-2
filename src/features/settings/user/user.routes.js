@@ -82,5 +82,11 @@ userRouter.patch(
   authorize(PERMISSIONS.ROLE_UPDATE.name),
   userController.updateUserStatus,
 );
+userRouter.patch(
+  "/:id/password",
+  authenticate,
+  authorize(PERMISSIONS.ROLE_UPDATE.name),
+  userController.resetUserPassword,
+);
 
 export default userRouter;

@@ -138,11 +138,31 @@ const updateUserStatus = async (req, res, next) => {
   }
 };
 
+const resetUserPassword = async (req, res, next) => {
+  try {
+    const auditContext = createAuditContext(req);
+
+    const user = await userService.resetUserPassword({
+      userId: req.params.id,
+      newPassword: req.body.password,
+      auditContext,
+    });
+
+    return ApiResponse.success(
+      res,
+      user,
+      "User password updated successfully. All active sessions have been revoked.",
+    );
+  } catch (error) {
+    next(error);
+  }
+};
 export default {
   getAllUsers,
   getUserById,
   getAssignableRoles,
   createUser,
+  resetUserPassword,
   updateUser,
   updateUserRole,
   updateUserStatus,

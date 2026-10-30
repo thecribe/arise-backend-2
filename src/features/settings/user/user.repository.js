@@ -2,6 +2,7 @@ import { Op } from "sequelize";
 
 import { Role } from "../../../database/models/Role.js";
 import { User } from "../../../database/models/User.js";
+import { UserSession } from "../../../database/models/UserSession.js";
 
 const EXCLUDED_ROLES = ["APPLICANT", "CARER"];
 
@@ -232,6 +233,24 @@ const findAssignableRoles = async (options = {}) => {
   });
 };
 
+const revokeAllUserSessions = async (userId, transaction) => {
+  const [affectedCount] = await UserSession.update(
+    {
+      revoked_at: new Date(),
+      refresh_token_hash: null,
+    },
+    {
+      where: {
+        user_id: userId,
+        revoked_at: null,
+      },
+      transaction,
+    },
+  );
+
+  return affectedCount;
+};
+
 export {
   findAll,
   findById,
@@ -243,4 +262,5 @@ export {
   updateStatus,
   findAssignableRoleById,
   findAssignableRoles,
+  revokeAllUserSessions,
 };

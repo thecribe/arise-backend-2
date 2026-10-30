@@ -479,6 +479,53 @@ const getAssignableRoles = async () => {
   return findAssignableRoles();
 };
 
+const resetUserPassword = async ({ userId, newPassword, auditContext }) => {
+  return sequelize.transaction(async (transaction) => {
+    assertAuditActionsExist([AUDIT_ACTIONS.USER_PASSWORD_UPDATED]);
+
+    const user = await User.findByPk(userId, {
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (!user) {
+      throw new NotFoundError("User not found.");
+    }
+
+    // Capture a safe snapshot before changing the password.
+    const previousData = getUserSnapshot(user);
+
+    const hashedPassword = await passwordService.hash(newPassword);
+
+    await user.update({ password: hashedPassword }, { transaction });
+
+    const revokedSessions = await userRepository.revokeAllUserSessions(
+      userId,
+      transaction,
+    );
+
+    const updatedUser = await userRepository.findById(userId, {
+      transaction,
+    });
+
+    await recordAuditAction({
+      auditContext,
+      action: AUDIT_ACTIONS.USER_PASSWORD_UPDATED,
+      entityType: AUDIT_ENTITY_TYPES.USER,
+      entityId: userId,
+      previousData,
+      newData: {
+        ...getUserSnapshot(updatedUser),
+        passwordReset: true,
+        sessionsRevoked: revokedSessions,
+      },
+      options: { transaction },
+    });
+
+    return updatedUser;
+  });
+};
+
 export const userService = {
   getAllUsers,
   getUserById,
@@ -487,4 +534,5 @@ export const userService = {
   updateUserRole,
   updateUserStatus,
   getAssignableRoles,
+  resetUserPassword,
 };
