@@ -157,6 +157,11 @@ const resetUserPassword = async (req, res, next) => {
     next(error);
   }
 };
+
+const createUserWithRole = async (req, res, next) => {
+  const user = await userService.createUserWithRole(req.body);
+  return ApiResponse.success(res, user, "User created successfully.");
+};
 export default {
   getAllUsers,
   getUserById,
@@ -166,4 +171,5 @@ export default {
   updateUser,
   updateUserRole,
   updateUserStatus,
+  createUserWithRole,
 };

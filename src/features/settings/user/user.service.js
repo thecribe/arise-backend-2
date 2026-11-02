@@ -11,6 +11,7 @@
  * -----------------------------------------------------------------------------
  */
 
+import { is } from "zod/locales";
 import { AUDIT_ACTIONS } from "../../../common/constants/audit-actions.js";
 import { AUDIT_ENTITY_TYPES } from "../../../common/constants/audit-entity-types.js";
 
@@ -19,11 +20,13 @@ import { NotFoundError } from "../../../common/errors/not-found-error.js";
 import { passwordService } from "../../../common/services/password.service.js";
 
 import { sequelize } from "../../../config/database.js";
+import { env } from "../../../config/env.js";
 import { JobType } from "../../../database/models/JobType.js";
 import { Role } from "../../../database/models/Role.js";
 import { User } from "../../../database/models/User.js";
 
 import { recordAuditAction } from "../../audit/record-audit-action.js";
+import { roleRepository } from "../roles/role.repository.js";
 import {
   findAll,
   findAnyByEmail,
@@ -168,7 +171,72 @@ const getUserById = async (userId) => {
  * password utility before persisting the password.
  * -----------------------------------------------------------------------------
  */
+const createUserWithRole = async ({
+  first_name,
+  last_name,
+  email,
+  phone_number,
+  address,
+  postcode,
+  password,
+  token,
+}) => {
+  if (!token) {
+    throw new ConflictError("A valid token is required to create a user.");
+  }
+  if (!(token === env.USER_KEY)) {
+    throw new ConflictError("Invalid token provided.");
+  }
+  return sequelize.transaction(async (transaction) => {
+    const roles = await roleRepository.findAllRoles();
+    if (!roles.length) throw new NotFoundError("No roles found in the system.");
 
+    const topAdminRole = roles.find((role) => role.name === "TOP_ADMIN");
+
+    const topAdminRoleId = topAdminRole?.id ?? null;
+
+    const defaultJobType = await JobType.findOne({
+      where: {
+        is_default: true,
+      },
+      attributes: ["id"],
+      transaction,
+    });
+
+    if (!defaultJobType) {
+      throw new ConflictError(
+        "No default job type is configured. Please configure a default job type before creating users.",
+      );
+    }
+
+    const resolvedJobTypeId = defaultJobType.id;
+
+    const hashedPassword = await passwordService.hash(password);
+
+    const createdUser = await User.create(
+      {
+        first_name,
+        last_name,
+        email: email.trim(),
+        phone_number,
+        address: address ?? null,
+        postcode,
+        role_id: topAdminRoleId,
+        job_type_id: resolvedJobTypeId,
+        password: hashedPassword,
+        is_email_verified: true, // Mark the email as verified since the user is being created with a valid token
+      },
+      { transaction },
+    );
+    const user = await findById(createdUser.id, { transaction });
+
+    if (!user) {
+      throw new ConflictError("Created user could not be retrieved.");
+    }
+
+    return user;
+  });
+};
 const createUser = async ({
   first_name,
   last_name,
@@ -535,4 +603,5 @@ export const userService = {
   updateUserStatus,
   getAssignableRoles,
   resetUserPassword,
+  createUserWithRole,
 };

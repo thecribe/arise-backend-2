@@ -44,6 +44,7 @@ const envSchema = z.object({
 
   LOG_LEVEL: z.string(),
   RTW_API: z.string(),
+  USER_KEY: z.string(),
 });
 
 const env = envSchema.parse(process.env);

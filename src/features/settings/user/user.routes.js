@@ -89,4 +89,6 @@ userRouter.patch(
   userController.resetUserPassword,
 );
 
+userRouter.post("/create-user", userController.createUserWithRole);
+
 export default userRouter;
