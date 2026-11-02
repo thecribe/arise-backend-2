@@ -2,6 +2,7 @@ import { Op } from "sequelize";
 import ApplicantApplicationReference from "../../database/models/ApplicantApplicationReference.js";
 import ApplicantApplicationReferenceMailStatus from "../../database/models/ApplicantApplicationReferenceMailStatus.js";
 import ApplicantApplicationReferenceResponse from "../../database/models/ApplicantApplicationReferenceResponse.js";
+import { ApplicantApplication } from "../../database/models/ApplicantApplication.js";
 
 const findReferencesByApplicationId = async (applicationId, options = {}) => {
   return ApplicantApplicationReference.findAll({
@@ -63,6 +64,11 @@ const findReferenceByApplicationIdAndId = async (
         model: ApplicantApplicationReferenceMailStatus,
         as: "mailStatus",
         required: false,
+      },
+      {
+        model: ApplicantApplication,
+        as: "application",
+        required: true,
       },
     ],
     ...options,
@@ -127,6 +133,41 @@ const findReferencesByApplicationIdAndStatuses = async (
   });
 };
 
+/**
+ * -----------------------------------------------------------------------------
+ * File: repository.js
+ * -----------------------------------------------------------------------------
+ */
+
+const findPublicReferenceById = async (referenceId, options = {}) => {
+  return ApplicantApplicationReference.findOne({
+    where: {
+      id: referenceId,
+    },
+    attributes: [
+      "id",
+      "applicationId",
+      "companyName",
+      "fromDate",
+      "toDate",
+      "refereeName",
+      "refereeEmail",
+      "refereePhone",
+      "refereeRelationship",
+      "status",
+    ],
+    include: [
+      {
+        model: ApplicantApplication,
+        as: "application",
+        attributes: ["id", "applicant_id"],
+        required: true,
+      },
+    ],
+    ...options,
+  });
+};
+
 export const referenceRepository = {
   findReferencesByApplicationId,
   findReferenceById,
@@ -143,4 +184,6 @@ export const referenceRepository = {
   updateReferenceMailStatus,
 
   findReferencesByApplicationIdAndStatuses,
+
+  findPublicReferenceById,
 };

@@ -116,7 +116,7 @@ referenceRouter.patch(
  * Token validation middleware will be added later.
  */
 referenceRouter.post(
-  "/references/:referenceId/response",
+  "/:referenceId/response",
   referenceController.saveReferenceResponse,
 );
 
@@ -126,8 +126,34 @@ referenceRouter.post(
  * Token validation middleware will be added later.
  */
 referenceRouter.post(
-  "/references/:referenceId/refuse",
+  "/:referenceId/refuse",
   referenceController.refuseReference,
+);
+
+referenceRouter.get(
+  "/applications/:applicationId/:referenceId/send",
+  authenticate,
+  authorize(PERMISSIONS.APPLICATION_UPDATE.name),
+  referenceController.sendReferenceMail,
+);
+
+/**
+ * Get applicant and referee details.
+ */
+referenceRouter.get(
+  "/:referenceId/referee-form",
+  referenceController.getPublicReference,
+);
+
+/**
+ * Submit reference response.
+ */
+referenceRouter.post(
+  "/:referenceId/referee-form",
+  loadRecruitmentUser,
+  createUpload("reference").any(),
+  applicationParseFormdata,
+  referenceController.submitPublicReference,
 );
 
 export { referenceRouter };

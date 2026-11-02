@@ -16,13 +16,13 @@ GeneralSettings.init(
     organisation_name: {
       type: DataTypes.STRING(255),
       allowNull: false,
-      defaultValue: "Airse",
+      defaultValue: "Arise",
     },
 
     site_name: {
       type: DataTypes.STRING(255),
       allowNull: false,
-      defaultValue: "Airse Recruitment",
+      defaultValue: "Arise Recruitment",
     },
 
     description: {

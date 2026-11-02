@@ -13,12 +13,7 @@ const generalRouter = Router();
 /**
  * Retrieve the current organisation settings.
  */
-generalRouter.get(
-  "/",
-  authenticate,
-  authorize(PERMISSIONS.APPLICATION_VIEW.name),
-  generalController.getGeneralSettings,
-);
+generalRouter.get("/", generalController.getGeneralSettings);
 
 /**
  * Update the current organisation settings.

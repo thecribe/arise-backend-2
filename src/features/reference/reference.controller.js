@@ -242,6 +242,87 @@ const refuseReference = async (req, res, next) => {
     next(error);
   }
 };
+const sendReferenceMail = async (req, res, next) => {
+  try {
+    const { referenceId, applicationId } = req.params;
+
+    const auditContext = createAuditContext(req);
+
+    const result = await referenceService.sendReferenceMail(
+      referenceId,
+      applicationId,
+      auditContext,
+    );
+
+    return ApiResponse.success(
+      res,
+      result,
+      "Reference mail sent successfully.",
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ * Get public reference details
+ *
+ * GET /public/references/:referenceId?token=
+ * -----------------------------------------------------------------------------
+ */
+const getPublicReference = async (req, res, next) => {
+  try {
+    const { referenceId } = req.params;
+    const { token } = req.query;
+
+    const result = await referenceService.getPublicReference(
+      referenceId,
+      token,
+    );
+
+    return ApiResponse.success(
+      res,
+      result,
+      "Reference details retrieved successfully.",
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ * Submit public reference response
+ *
+ * POST /public/references/:referenceId
+ * -----------------------------------------------------------------------------
+ */
+const submitPublicReference = async (req, res, next) => {
+  try {
+    const { referenceId } = req.params;
+    const { token, ...responseData } = req.body;
+
+    const auditContext = createAuditContext(req);
+
+    const result = await referenceService.submitPublicReference(
+      referenceId,
+      {
+        token,
+        ...responseData,
+      },
+      auditContext,
+    );
+
+    return ApiResponse.success(
+      res,
+      result,
+      "Reference submitted successfully.",
+    );
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const referenceController = {
   getReferences,
@@ -255,4 +336,7 @@ export const referenceController = {
   saveManagerReferenceResponse,
   updateReferenceMailStatus,
   refuseReference,
+  sendReferenceMail,
+  getPublicReference,
+  submitPublicReference,
 };

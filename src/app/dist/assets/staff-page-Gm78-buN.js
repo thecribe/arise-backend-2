@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-D_MnEzuy.js";var t=e();function n(){return(0,t.jsx)(`div`,{className:`p-8`,children:`CompliancePage`})}export{n as default};

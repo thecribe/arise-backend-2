@@ -1,0 +1,1 @@
+var e={LOCKED:`locked`,IN_PROGRESS:`in_progress`,SUBMITTED:`submitted`,APPROVED:`approved`,DRAFT:`draft`,REJECTED:`rejected`};export{e as t};

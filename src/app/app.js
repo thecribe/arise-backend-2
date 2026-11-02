@@ -5,14 +5,24 @@ import compression from "compression";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
 import path from "path";
+import { fileURLToPath } from "url";
 
 import { apiV1Router } from "../api/v1/index.js";
 
 import { env } from "../config/env.js";
 import { errorHandler } from "../common/middleware/error-handler.js";
 
-const allowedOrigins = env.APP_URL.split(",").map((origin) => origin.trim());
+// ES Module equivalent of __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const allowedOrigins = env.APP_URL.split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 const app = express();
+
+// ====================== SECURITY ======================
 
 app.use(
   helmet({
@@ -22,22 +32,25 @@ app.use(
 
     contentSecurityPolicy: {
       directives: {
-        frameAncestors: ["'self'", "http://localhost:5173"],
+        frameAncestors: [
+          "'self'",
+          "http://localhost:5173",
+          "https://developer.cribe.org",
+          "http://localhost:5000",
+        ],
       },
     },
   }),
 );
 
+app.set("trust proxy", 1);
+
+// ====================== CORS ======================
+
 app.use(
   cors({
     origin(origin, callback) {
-      /**
-       * Allow requests without an Origin header.
-       * Examples:
-       * - Postman
-       * - Mobile apps
-       * - Server-to-server requests
-       */
+      // Allow requests without an Origin header
       if (!origin) {
         return callback(null, true);
       }
@@ -57,39 +70,47 @@ app.use(
   }),
 );
 
+// ====================== GENERAL MIDDLEWARE ======================
+
 app.use(compression());
 
 app.use(cookieParser());
 
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.use(morgan("dev"));
 
+// ====================== API ROUTES ======================
+
 app.use("/api/v1", apiV1Router);
 
-// /**
-//  * Unknown routes
-//  */
-// app.use(notFound);
+// ====================== UPLOADS ======================
 
-// /**
-//  * Global error handler
-//  */
-// app.use(errorHandler);
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+
+// ====================== SERVE VITE REACT BUILD ======================
+
+const distPath = path.resolve(__dirname, "dist");
 
 app.use(
-  "/uploads",
-
-  express.static(path.join(process.cwd(), "uploads")),
+  express.static(distPath, {
+    setHeaders(res) {
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    },
+  }),
 );
 
-/**
- * Global error handler.
- *
- * Must be registered after routes and other middleware.
- */
+// React Router fallback
+app.get("/{*path}", (req, res, next) => {
+  res.sendFile(path.join(distPath, "index.html"), (err) => {
+    if (err) next(err);
+  });
+});
+
+// ====================== GLOBAL ERROR HANDLER ======================
+
 app.use(errorHandler);
 
 export { app };

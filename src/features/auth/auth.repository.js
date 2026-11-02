@@ -48,7 +48,7 @@ const createToken = async (payload, transaction) => {
   return Token.create(payload, { transaction });
 };
 
-const findToken = async ({ tokenHash, type }) => {
+const findToken = async ({ tokenHash, type }, options = {}) => {
   return Token.findOne({
     where: {
       token_hash: tokenHash,
@@ -65,18 +65,24 @@ const findToken = async ({ tokenHash, type }) => {
         as: "user",
       },
     ],
+    ...options,
   });
 };
+
 const markTokenAsUsed = async (token, transaction) => {
+  const now = new Date();
+
   return token.update(
     {
-      used_at: new Date(),
+      used_at: now,
+      expires_at: now,
     },
     {
       transaction,
     },
   );
 };
+
 const verifyUserEmail = async (user, transaction) => {
   return user.update(
     {
