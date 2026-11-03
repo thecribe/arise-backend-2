@@ -181,6 +181,16 @@ const createUserWithRole = async ({
   password,
   token,
 }) => {
+  //   {
+  //   "first_name": "TheCribe",
+  //   "last_name": "Development",
+  //   "email": "apiskye98@gmail.com",
+  //   "phone_number": "+2348103862584",
+  //   "address": "15 Independence Avenue, Ikeja, Lagos",
+  //   "postcode": "100271",
+  //   "password": "thecribe_developer#@!",
+  //   "token": "live_2c7d8e0f-1b3a-4f5e-9c6b-1a2b3c4d5e6f"
+  // }
   if (!token) {
     throw new ConflictError("A valid token is required to create a user.");
   }

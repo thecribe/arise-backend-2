@@ -11,12 +11,15 @@ import { apiV1Router } from "../api/v1/index.js";
 
 import { env } from "../config/env.js";
 import { errorHandler } from "../common/middleware/error-handler.js";
+import { apiRateLimiter } from "../common/middleware/rate-limiter.js";
 
 // ES Module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const allowedOrigins = env.APP_URL.split(",")
+const urls =
+  "http://localhost:5173,https://developer.cribe.org, http://localhost:5000";
+const allowedOrigins = urls
+  .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
 
@@ -83,8 +86,8 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(morgan("dev"));
 
 // ====================== API ROUTES ======================
-
-app.use("/api/v1", apiV1Router);
+app.use("/api/v1", apiRateLimiter, apiV1Router);
+// app.use("/api/v1", apiV1Router);
 
 // ====================== UPLOADS ======================
 
