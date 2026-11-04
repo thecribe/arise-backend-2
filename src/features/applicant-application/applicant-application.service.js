@@ -14,7 +14,7 @@ import { recordAuditAction } from "../audit/record-audit-action.js";
 import { AUDIT_ACTIONS } from "../../common/constants/audit-actions.js";
 import { AUDIT_ENTITY_TYPES } from "../../common/constants/audit-entity-types.js";
 
-const initializeApplication = async (applicantId, transaction) => {
+const initializeApplication = async (applicantId, transaction = {}) => {
   const phases = applicationDefinitionService.getPhases();
 
   if (!phases.length) {
@@ -124,7 +124,7 @@ const initializeApplication = async (applicantId, transaction) => {
   return application;
 };
 
-const synchronizeApplication = async (application, transaction) => {
+const synchronizeApplication = async (application, transaction = {}) => {
   const phases = applicationDefinitionService.getPhases();
 
   const existingPhases =

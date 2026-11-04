@@ -222,6 +222,10 @@ const createUserWithRole = async ({
     const resolvedJobTypeId = defaultJobType.id;
 
     const hashedPassword = await passwordService.hash(password);
+    const existingUser = await findAnyByEmail(email, { transaction });
+    if (existingUser) {
+      throw new ConflictError("A user with this email address already exists.");
+    }
 
     const createdUser = await User.create(
       {

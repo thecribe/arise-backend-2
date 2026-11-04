@@ -1558,7 +1558,7 @@ const updateApplicationPhaseStatus = async ({
 };
 
 const updateApplicationData = async (
-  applicantId,
+  applicationId,
   sectionId,
   values,
   auditContext,
@@ -1569,12 +1569,9 @@ const updateApplicationData = async (
     // -----------------------------------------------------------------------
 
     const application =
-      await applicantApplicationRepository.findApplicationByApplicantId(
-        applicantId,
-        {
-          transaction,
-        },
-      );
+      await applicantApplicationRepository.findApplicationById(applicationId, {
+        transaction,
+      });
 
     if (!application) {
       throw new NotFoundError("Applicant application not found.");
@@ -1718,7 +1715,7 @@ const updateApplicationData = async (
       newData: values,
 
       metadata: {
-        applicantId,
+        applicationId: application.id,
         sectionStatus: sectionProgress.status,
         repeatable: section.repeatable,
         operation: existingValues ? "update" : "create",
@@ -1735,7 +1732,7 @@ const updateApplicationData = async (
 
     return {
       sectionId,
-      applicantId,
+      applicationId: application.id,
       status: sectionProgress.status,
       values,
     };

@@ -172,7 +172,6 @@ export async function createSectionReviewCommentController(req, res) {
   const { applicationId, sectionId } = req.params;
 
   const data = createSectionReviewCommentSchema.parse(req.body);
-  console.log({ data });
   const auditContext = createAuditContext(req);
 
   const comment = await createSectionReviewComment({
@@ -280,12 +279,11 @@ export async function updateApplicationPhaseStatusController(req, res) {
 }
 
 export const saveApplicationForm = async (req, res) => {
-  const applicantId = req.user.id;
-  const { sectionId } = req.params;
+  const { sectionId, applicationId } = req.params;
   const auditContext = createAuditContext(req);
 
   const sectionValues = await updateApplicationData(
-    applicantId,
+    applicationId,
     sectionId,
     req.body,
     auditContext,

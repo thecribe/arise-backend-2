@@ -15,6 +15,7 @@ const getInterview = async (req, res, next) => {
     const interview =
       await interviewService.getInterviewByApplicationId(applicationId);
 
+    console.log("Interview retrieved:", { interview });
     return ApiResponse.success(
       res,
       interview,
