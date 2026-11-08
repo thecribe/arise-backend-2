@@ -10,8 +10,12 @@ import {
   updateUserRole,
   getUserProfile,
   updateUserJobType,
+  getOwnUserProfile,
+  updateOwnUserProfile,
+  updateOwnUserPassword,
 } from "./user.service.js";
 import {
+  updateOwnPasswordSchema,
   updateUserAccountStatusSchema,
   updateUserEmailSchema,
   updateUserPasswordSchema,
@@ -131,13 +135,13 @@ export const getApplicationStatus = async (req, res, next) => {
     const data =
       await applicationStatusService.getApplicationStatus(applicantId);
 
-    return res.status(200).json({
-      success: true,
-      message: "Application status retrieved successfully.",
+    return ApiResponse.success(
+      res,
       data,
-    });
+      "Application status retrieved successfully.",
+    );
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -155,12 +159,53 @@ export const updateApplicationStatus = async (req, res, next) => {
       auditContext,
     });
 
-    return res.status(200).json({
-      success: true,
-      message: "Application status updated successfully.",
+    return ApiResponse.success(
+      res,
       data,
-    });
+      "Application status updated successfully.",
+    );
   } catch (error) {
-    next(error);
+    return next(error);
+  }
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ * Applicant Self-Service
+ * -----------------------------------------------------------------------------
+ */
+
+export async function getOwnUserProfileController(req, res) {
+  const userId = req.user?.id;
+
+  const user = await getOwnUserProfile(userId);
+
+  return ApiResponse.success(res, user, "Profile retrieved successfully.");
+}
+
+export async function updateOwnUserProfileController(req, res) {
+  const userId = req.user?.id;
+
+  const data = updateUserProfileSchema.parse(req.body);
+  const auditContext = createAuditContext(req);
+
+  const user = await updateOwnUserProfile(userId, data, auditContext);
+
+  return ApiResponse.success(res, user, "Profile updated successfully.");
+}
+
+export const updateOwnUserPasswordController = async (req, res, next) => {
+  try {
+    const userId = req.user?.id;
+
+    const data = updateOwnPasswordSchema.parse(req.body);
+
+    const auditContext = createAuditContext(req);
+
+    const result = await updateOwnUserPassword(userId, data, auditContext);
+
+    return ApiResponse.success(res, result, "Password updated successfully.");
+  } catch (error) {
+    return next(error);
   }
 };

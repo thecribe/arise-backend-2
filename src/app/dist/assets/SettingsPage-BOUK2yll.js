@@ -1,4 +1,4 @@
-import{t as e}from"./jsx-runtime-D_MnEzuy.js";import{X as t}from"./index-ROCSi0CX.js";var n=e(),r=()=>(0,n.jsx)(`div`,{className:`\r
+import{t as e}from"./jsx-runtime-D_MnEzuy.js";import{$ as t}from"./index-CiVnOsJK.js";var n=e(),r=()=>(0,n.jsx)(`div`,{className:`\r
         flex min-h-[420px] items-center justify-center\r
         rounded-2xl\r
         border border-blue-200/60\r

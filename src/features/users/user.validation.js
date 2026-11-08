@@ -48,3 +48,10 @@ export const updateUserRoleSchema = z
     roleId: z.string().uuid(),
   })
   .strict();
+
+export const updateOwnPasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Current password is required."),
+    newPassword: z.string().min(8).max(128),
+  })
+  .strict();

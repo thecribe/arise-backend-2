@@ -25,6 +25,12 @@ import { BadRequestError } from "../../common/errors/bad-request-error.js";
 import { AUDIT_ACTIONS } from "../../common/constants/audit-actions.js";
 import { AUDIT_ENTITY_TYPES } from "../../common/constants/audit-entity-types.js";
 import { recordAuditAction } from "../audit/record-audit-action.js";
+import { authRepository } from "../auth/auth.repository.js";
+import { tokenService } from "../../common/services/token.service.js";
+import { TOKEN_TYPES } from "../../common/constants/token-types.js";
+import { JOB_TYPES } from "../../common/constants/job-types.js";
+import { initializeApplication } from "../applicant-application/applicant-application.service.js";
+import { jobService } from "../../infrastructure/jobs/job.service.js";
 
 /**
  * -----------------------------------------------------------------------------
@@ -1738,6 +1744,115 @@ const updateApplicationData = async (
     };
   });
 };
+
+const createRecruitmentApplicant = async ({
+  payload,
+  managerId,
+  auditContext,
+}) => {
+  return sequelize.transaction(async (transaction) => {
+    // Check existing email
+    const existingUser = await authRepository.findUserByEmail(payload.email);
+
+    if (existingUser) {
+      throw new ForbiddenError("Email address already exists.");
+    }
+
+    // Get applicant role
+    const applicantRole = await authRepository.findRoleByName("APPLICANT");
+
+    if (!applicantRole) {
+      throw new NotFoundError("Applicant role not found.");
+    }
+
+    // Validate selected job type
+    const jobType = await authRepository.findJobTypeById(payload.jobTypeId);
+
+    if (!jobType) {
+      throw new NotFoundError("Job type not found.");
+    }
+
+    // Create applicant
+    const user = await authRepository.createUser(
+      {
+        first_name: payload.firstName,
+        last_name: payload.lastName,
+        email: payload.email,
+        phone_number: payload.phoneNumber,
+        address: payload.address,
+        postcode: payload.postcode,
+        role_id: applicantRole.id,
+        job_type_id: jobType.id,
+        is_active: true,
+      },
+      transaction,
+    );
+
+    // Generate verification token
+    const verificationToken = tokenService.generate();
+    const tokenHash = tokenService.hash(verificationToken);
+
+    // Save verification token
+    await authRepository.createToken(
+      {
+        user_id: user.id,
+        type: TOKEN_TYPES.EMAIL_VERIFICATION,
+        token_hash: tokenHash,
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      },
+      transaction,
+    );
+
+    // Queue verification email
+    await jobService.dispatch(
+      {
+        type: JOB_TYPES.EMAIL_VERIFICATION,
+        payload: {
+          userId: user.id,
+          firstName: user.first_name,
+          email: user.email,
+          token: verificationToken,
+        },
+      },
+      transaction,
+    );
+
+    // Initialize applicant application
+    const application = await initializeApplication(user.id, transaction);
+
+    // Record audit action
+    await recordAuditAction({
+      auditContext,
+      action: AUDIT_ACTIONS.USER_REGISTERED,
+      entityType: AUDIT_ENTITY_TYPES.USER,
+      entityId: user.id,
+      newData: {
+        firstName: user.first_name,
+        lastName: user.last_name,
+        email: user.email,
+        phoneNumber: user.phone_number,
+        address: user.address,
+        postcode: user.postcode,
+        roleId: user.role_id,
+        jobTypeId: user.job_type_id,
+      },
+      metadata: {
+        registrationType: "manager_created",
+        createdBy: managerId,
+        applicationId: application.id,
+      },
+      options: { transaction },
+    });
+
+    return {
+      id: user.id,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      email: user.email,
+      applicationId: application.id,
+    };
+  });
+};
 export {
   getRecruitmentDefaultData,
   getRecruitmentApplicants,
@@ -1749,4 +1864,5 @@ export {
   deleteSectionReviewComment,
   updateApplicationPhaseStatus,
   updateApplicationData,
+  createRecruitmentApplicant,
 };

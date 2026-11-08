@@ -20,6 +20,7 @@ import {
   deleteSectionReviewCommentController,
   updateApplicationPhaseStatusController,
   saveApplicationForm,
+  createRecruitmentApplicantController,
 } from "./recruitment.controller.js";
 import { authenticate } from "../../common/middleware/authenticate.js";
 import { PERMISSIONS } from "../../common/constants/permissions.js";
@@ -340,4 +341,13 @@ recruitmentRouter.post(
   recruitmentComplianceSectionController.verifyRTW,
 );
 
+recruitmentRouter.post(
+  "/applicants",
+  authenticate,
+  authorize(
+    PERMISSIONS.RECRUITMENT_VIEW.name,
+    PERMISSIONS.RECRUITMENT_APPROVE.name,
+  ),
+  createRecruitmentApplicantController,
+);
 export { recruitmentRouter };

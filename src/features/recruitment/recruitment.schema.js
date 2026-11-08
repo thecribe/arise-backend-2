@@ -73,3 +73,41 @@ export const recruitmentApplicantsQuerySchema = z.object({
     ])
     .default(APPLICATION_STATUS.IN_PROGRESS),
 });
+
+export const createRecruitmentApplicantSchema = z
+  .object({
+    firstName: z
+      .string()
+      .trim()
+      .min(2, "First name must be at least 2 characters")
+      .max(100),
+
+    lastName: z
+      .string()
+      .trim()
+      .min(2, "Last name must be at least 2 characters")
+      .max(100),
+
+    email: z
+      .string()
+      .trim()
+      .email("Please enter a valid email address")
+      .max(255),
+
+    phoneNumber: z
+      .string()
+      .trim()
+      .min(10, "Please enter a valid phone number")
+      .max(30),
+
+    address: z
+      .string()
+      .trim()
+      .min(5, "Address must be at least 5 characters")
+      .max(255),
+
+    postcode: z.string().trim().min(3, "Please enter a valid postcode").max(30),
+
+    jobTypeId: z.string().uuid("Please select a valid job type"),
+  })
+  .strict();

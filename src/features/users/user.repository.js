@@ -219,6 +219,28 @@ const updateUserRole = async (applicantId, roleId, options = {}) => {
     },
   );
 };
+const findOwnUserProfileById = async (userId, options = {}) => {
+  return User.findByPk(userId, {
+    attributes: [
+      "id",
+      "first_name",
+      "last_name",
+      "email",
+      "phone_number",
+      "address",
+      "postcode",
+      "profile_img",
+    ],
+    ...options,
+  });
+};
+
+const findUserPasswordById = async (userId, options = {}) => {
+  return User.findByPk(userId, {
+    attributes: ["id", "password"],
+    ...options,
+  });
+};
 
 export {
   findUserById,
@@ -236,4 +258,6 @@ export {
   findUserWithRoleById,
   findRoleById,
   updateUserRole,
+  findOwnUserProfileById,
+  findUserPasswordById,
 };

@@ -10,7 +10,6 @@ import { sequelize } from "../../config/database.js";
 import { jobService } from "../../infrastructure/jobs/job.service.js";
 import { recordAuditAction } from "../audit/record-audit-action.js";
 import { authRepository } from "../auth/auth.repository.js";
-import { authService } from "../auth/auth.service.js";
 import { applicationStatusService } from "../recruitment/application-status.service.js";
 import * as userRepository from "./user.repository.js";
 
@@ -600,6 +599,109 @@ const updateUserRole = async (applicantId, roleId, auditContext) => {
     });
   });
 };
+
+/**
+ * -----------------------------------------------------------------------------
+ * Applicant Self-Service
+ * -----------------------------------------------------------------------------
+ */
+
+const getOwnUserProfile = async (userId) => {
+  const user = await userRepository.findOwnUserProfileById(userId);
+
+  if (!user) {
+    throw new NotFoundError("User not found.");
+  }
+
+  return user;
+};
+
+const updateOwnUserProfile = async (userId, values, auditContext) => {
+  return sequelize.transaction(async (transaction) => {
+    const user = await userRepository.findOwnUserProfileById(userId, {
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (!user) {
+      throw new NotFoundError("User not found.");
+    }
+
+    const previousData = {};
+
+    for (const key of Object.keys(values)) {
+      previousData[key] = user.get(key);
+    }
+
+    await userRepository.updateUserProfile(userId, values, {
+      transaction,
+    });
+
+    await recordAuditAction({
+      auditContext,
+      action: AUDIT_ACTIONS.USER_PROFILE_UPDATED,
+      entityType: AUDIT_ENTITY_TYPES.USER,
+      entityId: userId,
+      previousData,
+      newData: values,
+      metadata: {
+        operation: "self_profile_update",
+      },
+      options: {
+        transaction,
+      },
+    });
+
+    return userRepository.findOwnUserProfileById(userId, {
+      transaction,
+    });
+  });
+};
+
+const updateOwnUserPassword = async (
+  userId,
+  { currentPassword, newPassword },
+  auditContext,
+) => {
+  return sequelize.transaction(async (transaction) => {
+    const user = await userRepository.findUserPasswordById(userId, {
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (!user) {
+      throw new NotFoundError("User not found.");
+    }
+
+    const isPasswordValid = await passwordService.compare(
+      currentPassword,
+      user.password,
+    );
+
+    if (!isPasswordValid) {
+      throw new ConflictError("Current password is incorrect.");
+    }
+
+    const hashedPassword = await passwordService.hash(newPassword);
+
+    await userRepository.updateUserPassword(userId, hashedPassword, {
+      transaction,
+    });
+
+    await recordAuditAction({
+      auditContext,
+      action: AUDIT_ACTIONS.USER_PASSWORD_UPDATED,
+      entityType: AUDIT_ENTITY_TYPES.USER,
+      entityId: userId,
+      metadata: {
+        operation: "self_password_update",
+      },
+      options: { transaction },
+    });
+
+    return { message: "Password updated successfully." };
+  });
+};
 export {
   getUserProfile,
   updateUserProfile,
@@ -610,4 +712,7 @@ export {
   updateApplicantApplicationStatus,
   updateUserRole,
   updateUserJobType,
+  getOwnUserProfile,
+  updateOwnUserProfile,
+  updateOwnUserPassword,
 };

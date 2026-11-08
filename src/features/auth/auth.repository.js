@@ -206,6 +206,10 @@ const findDefaultJobType = async () => {
   });
 };
 
+const findJobTypeById = async (id) => {
+  return JobType.findByPk(id);
+};
+
 //Export all respository
 export const authRepository = {
   findUserByEmail,
@@ -225,4 +229,5 @@ export const authRepository = {
   revokeSession,
   revokeAllSessions,
   findDefaultJobType,
+  findJobTypeById,
 };

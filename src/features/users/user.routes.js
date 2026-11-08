@@ -10,6 +10,9 @@ import {
   updateApplicationStatus,
   getUserProfileController,
   updateUserJobTypeController,
+  getOwnUserProfileController,
+  updateOwnUserProfileController,
+  updateOwnUserPasswordController,
 } from "./user.controller.js";
 import { authenticate } from "../../common/middleware/authenticate.js";
 import { PERMISSIONS } from "../../common/constants/permissions.js";
@@ -19,6 +22,7 @@ import createUpload from "../../common/middleware/createUpload.js";
 import { applicationParseFormdata } from "../../common/middleware/applicationParseFormData.js";
 
 const router = Router();
+const singleUserRouter = Router();
 
 /**
  * -----------------------------------------------------------------------------
@@ -97,4 +101,23 @@ router.get("/:applicantId/application-status", getApplicationStatus);
 
 router.patch("/:applicantId/application-status", updateApplicationStatus);
 
+// Applicant self-service routes
+singleUserRouter.get("/profile", authenticate, getOwnUserProfileController);
+
+singleUserRouter.patch(
+  "/profile",
+  authenticate,
+  loadUploadUser,
+  createUpload("user-profile").any(),
+  applicationParseFormdata,
+  updateOwnUserProfileController,
+);
+
+singleUserRouter.patch(
+  "/password",
+  authenticate,
+  updateOwnUserPasswordController,
+);
+
 export { router as userRouter };
+export { singleUserRouter };

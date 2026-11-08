@@ -971,4 +971,5 @@ export {
   saveSectionDraft,
   submitSection,
   getApplicantSectionReviewComments,
+  initializeApplication,
 };

@@ -11,7 +11,10 @@
  */
 
 import { ApiResponse } from "../../common/responses/api-response.js";
-import { recruitmentApplicantsQuerySchema } from "./recruitment.schema.js";
+import {
+  createRecruitmentApplicantSchema,
+  recruitmentApplicantsQuerySchema,
+} from "./recruitment.schema.js";
 import {
   getRecruitmentDefaultData,
   getRecruitmentApplicants,
@@ -23,6 +26,7 @@ import {
   deleteSectionReviewComment,
   updateApplicationPhaseStatus,
   updateApplicationData,
+  createRecruitmentApplicant,
 } from "./recruitment.service.js";
 import {
   createSectionReviewCommentSchema,
@@ -295,3 +299,21 @@ export const saveApplicationForm = async (req, res) => {
     "Application section draft saved successfully.",
   );
 };
+
+export async function createRecruitmentApplicantController(req, res) {
+  const payload = createRecruitmentApplicantSchema.parse(req.body);
+
+  const auditContext = createAuditContext(req);
+
+  const applicant = await createRecruitmentApplicant({
+    payload,
+    managerId: req.user.id,
+    auditContext,
+  });
+
+  return ApiResponse.success(
+    res,
+    applicant,
+    "Applicant created successfully. Verification email has been sent.",
+  );
+}

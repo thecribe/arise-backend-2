@@ -14,7 +14,10 @@ import trainingCertificateApplicantRouter from "../../features/compliance/applic
 import InterviewRouter from "../../features/interview/applicant-interview.routes.js";
 import interviewDefinitionRouter from "../../features/interview/definition/interview-definition.routes.js";
 import DocumentsRouter from "../../features/documents/documents.route.js";
-import { userRouter } from "../../features/users/user.routes.js";
+import {
+  singleUserRouter,
+  userRouter,
+} from "../../features/users/user.routes.js";
 import DeclarationsRouter from "../../features/declarations/declarations.routes.js";
 import ApplicantDeclarationsRouter from "../../features/declarations/applicant-declarations.route.js";
 import generalComplianceRouter from "../../features/compliance/general-compliance.routes.js";
@@ -35,6 +38,7 @@ apiV1Router.use("/dashboard", dashboardRouter);
 apiV1Router.use("/recruitment", recruitmentRouter);
 apiV1Router.use("/references", referenceRouter);
 apiV1Router.use("/users", userRouter);
+apiV1Router.use("/single-user", singleUserRouter);
 apiV1Router.use(
   "/training-certificate-requirements",
   trainingCertificateRouter,
