@@ -17,7 +17,7 @@ import { apiRateLimiter } from "../common/middleware/rate-limiter.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const urls =
-  "http://localhost:5173,https://developer.cribe.org, http://localhost:5000";
+  "http://localhost:5173, https://developer.cribe.org, http://localhost:5000";
 const allowedOrigins = urls
   .split(",")
   .map((origin) => origin.trim())
@@ -35,6 +35,27 @@ app.use(
 
     contentSecurityPolicy: {
       directives: {
+        defaultSrc: ["'self'"],
+
+        scriptSrc: ["'self'", "'wasm-unsafe-eval'"],
+
+        connectSrc: [
+          "'self'",
+          "data:",
+          "blob:",
+          "http://localhost:5173",
+          "http://localhost:5000",
+          "https://developer.cribe.org",
+        ],
+
+        workerSrc: ["'self'", "blob:"],
+
+        imgSrc: ["'self'", "data:", "blob:", "https:"],
+
+        fontSrc: ["'self'", "data:", "https:"],
+
+        styleSrc: ["'self'", "'unsafe-inline'", "https:"],
+
         frameAncestors: [
           "'self'",
           "http://localhost:5173",
