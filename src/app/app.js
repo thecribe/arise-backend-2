@@ -49,6 +49,7 @@ app.use(
         ],
 
         workerSrc: ["'self'", "blob:"],
+        frameSrc: ["'self'", "blob:", "data:"],
 
         imgSrc: ["'self'", "data:", "blob:", "https:"],
 
